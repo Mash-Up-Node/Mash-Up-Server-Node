@@ -1,0 +1,23 @@
+name: "⚙️ Setting"
+description: "개발 환경 및 프로젝트 설정"
+title: "[Setting]: Setting Title"
+labels: ["Type:Setting"]
+body:
+  - type: textarea
+    attributes:
+      label: 📄 설명
+      description: 개발 환경 또는 프로젝트 설정에 대한 설명을 작성해 주세요.
+      placeholder: 왜 필요한 설정인지 함께 적어주면 좋아요!
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ✅ 작업할 내용
+      description: 할 일을 체크박스 형태로 작성해주세요.
+      placeholder: 최대한 세분화 해서 적어주세요!
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 🙋🏻 참고 자료
+      description: 참고 자료가 있다면 작성해 주세요.
