@@ -1,0 +1,44 @@
+service: mashup-server-node
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ap-northeast-2
+  stage: ${param:stage}
+  memorySize: 256 # 너무 느릴 경우 증설 예정
+  timeout: 29
+  environment:
+    NODE_ENV: ${param:stage}
+    # DB 정보 추가 예정
+
+functions:
+  api:
+    handler: src/lambda.handler
+    events:
+      - httpApi:
+          method: '*'
+          path: '/{proxy+}'
+
+plugins:
+  - serverless-esbuild
+  - serverless-offline
+
+package:
+  individually: true
+
+custom:
+  esbuild: # ts 압축용 플러그인
+    bundle: true
+    minify: true # 압축
+    sourcemap: true # 로그 확인용
+    target: node20
+    platform: node
+    concurrency: 10 # 병렬 빌드
+    exclude:
+      - aws-sdk
+  serverless-offline: # 도커로 로컬에서 람다 실행해 볼 수 있는 플러그인
+    httpPort: 3000
+    noPrependStageInUrl: true
+    useDocker: true
+    dockerHost: host.docker.internal
+    dockerReadOnly: false
