@@ -5,6 +5,7 @@ export function swaggerConfig(app: INestApplication) {
   const config = new DocumentBuilder()
     .setTitle('MashUp Node Server')
     .setDescription('MashUp 서버 Node로 만들기 API 문서입니다.')
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
