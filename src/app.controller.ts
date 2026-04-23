@@ -13,6 +13,6 @@ export class AppController {
 
   @Get('error-check')
   getError() {
-    throw new TestException();
+    throw TestException.testError();
   }
 }

@@ -1,14 +1,12 @@
 import { BaseException } from './base.exception';
 import { HttpStatus } from '@nestjs/common';
-import { AppTestMessage } from './error-message.enum';
-import { AppTestErrorCode } from './error-code.enum';
 
 export class TestException extends BaseException {
-  constructor() {
-    super(
-      HttpStatus.I_AM_A_TEAPOT,
-      AppTestErrorCode.TEST_ERROR,
-      AppTestMessage.TEST_EXCEPTION,
-    );
+  private constructor(errorCode: string, message: string) {
+    super(HttpStatus.INTERNAL_SERVER_ERROR, errorCode, message);
+  }
+
+  static testError() {
+    return new TestException('TEST_ERROR', '테스트용 에러입니다.');
   }
 }
