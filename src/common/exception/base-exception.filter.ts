@@ -11,7 +11,9 @@ export class BaseExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const status = exception.getStatus();
 
-    this.logger.error(exception.message, exception.stack);
+    const logLevel = status >= 500 ? 'error' : 'warn';
+    this.logger[logLevel](exception.message, exception.stack);
+
     response.status(status).json(exception.getResponse());
   }
 }
