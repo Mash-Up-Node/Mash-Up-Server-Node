@@ -20,16 +20,18 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
   constructor(@Inject(REDIS_CLIENT) private readonly redisClient: Redis) {}
 
   async onModuleInit(): Promise<void> {
-    try {
-      const pong = await this.redisClient.ping();
+    this.redisClient.on('error', (err) => {
+      this.logger.error(`Redis error: ${err.message}`, err.stack);
+    });
+    this.redisClient.on('reconnecting', (delay: number) => {
+      this.logger.warn(`Redis reconnecting in ${delay}ms`);
+    });
+    this.redisClient.on('end', () => {
+      this.logger.error('Redis connection ended (retries exhausted)');
+    });
 
-      this.logger.log(`Redis connection check succeeded: ${pong}`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-
-      this.logger.error(`Redis connection check failed: ${message}`);
-      throw error;
-    }
+    const pong = await this.redisClient.ping();
+    this.logger.log(`Redis connection check succeeded: ${pong}`);
   }
 
   onApplicationShutdown(): Promise<'OK'> {
@@ -54,10 +56,6 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
 
   del(key: string): Promise<number> {
     return this.redisClient.del(key);
-  }
-
-  ping(): Promise<string> {
-    return this.redisClient.ping();
   }
 
   zAdd(key: string, score: number, member: string): Promise<number> {
