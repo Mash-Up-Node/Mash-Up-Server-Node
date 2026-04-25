@@ -27,7 +27,22 @@ export class ZodValidationPipe<T = unknown> implements PipeTransform<
     const result = this.schema.safeParse(value);
 
     if (result.success === false) {
-      throw new BadRequestException(result.error.flatten());
+      const { formErrors, fieldErrors } = result.error.flatten();
+      const messages = [
+        ...formErrors,
+        ...Object.entries(fieldErrors).flatMap(([field, errors]) => {
+          if (!Array.isArray(errors)) {
+            return [];
+          }
+
+          return errors.map((message) => `${field}: ${String(message)}`);
+        }),
+      ];
+
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: messages.join(', ') || '요청값 형식이 올바르지 않습니다.',
+      });
     }
 
     return result.data;

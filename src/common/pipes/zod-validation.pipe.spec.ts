@@ -17,20 +17,23 @@ describe('ZodValidationPipe', () => {
     });
   });
 
-  it('invalid payload면 BadRequestException을 던진다', () => {
+  it('invalid payload면 code와 message를 포함한 BadRequestException을 던진다', () => {
     const pipe = new ZodValidationPipe(schema);
+
+    expect.assertions(3);
 
     try {
       pipe.transform({ name: '', age: -1 });
-      fail('Expected BadRequestException to be thrown');
     } catch (error) {
       expect(error).toBeInstanceOf(BadRequestException);
       expect((error as BadRequestException).getResponse()).toMatchObject({
-        fieldErrors: {
-          name: expect.any(Array),
-          age: expect.any(Array),
-        },
+        code: 'VALIDATION_ERROR',
+        message: expect.any(String),
       });
+      expect(
+        ((error as BadRequestException).getResponse() as { message: string })
+          .message,
+      ).toContain('name:');
     }
   });
 });
