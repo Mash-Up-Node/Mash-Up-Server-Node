@@ -35,7 +35,7 @@ export class ZodValidationPipe<T = unknown> implements PipeTransform<
             return [];
           }
 
-          return errors.map((message) => `${field}: ${String(message)}`);
+          return errors.map((message) => `${field}: ${message}`);
         }),
       ];
 
