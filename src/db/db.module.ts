@@ -2,7 +2,7 @@ import { Inject, Module, OnModuleDestroy } from '@nestjs/common';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 
-import * as schema from './schema';
+import * as schema from '../schema';
 import { createDb, createPool } from './client';
 import { DRIZZLE_DB, DB_POOL } from './db.constants';
 
