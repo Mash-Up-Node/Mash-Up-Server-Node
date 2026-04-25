@@ -11,6 +11,7 @@ async function bootstrap() {
   nestConfig(app);
 
   app.useGlobalFilters(new BaseExceptionFilter());
+  app.enableShutdownHooks();
   await app.listen(3000);
 }
 bootstrap();
