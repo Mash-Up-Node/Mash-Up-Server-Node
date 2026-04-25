@@ -1,18 +1,14 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
-import * as schema from './schema';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import * as schema from '../schema';
 
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error('DATABASE_URL is required to initialize database client.');
+export function createPool(databaseUrl: string): Pool {
+  return new Pool({
+    connectionString: databaseUrl,
+  });
 }
 
-export const pool = new Pool({
-  connectionString: databaseUrl,
-});
-
-export const db = drizzle(pool, {
-  schema,
-});
+export function createDb(pool: Pool) {
+  return drizzle(pool, { schema });
+}

@@ -57,17 +57,6 @@ export const attendanceCheckMethodEnum = pgEnum(
   ['QR', 'MANUAL'],
 );
 
-export const missionCategoryEnum = pgEnum('mission_category_enum', [
-  'ATTENDANCE',
-  'ACTIVITY',
-  'SPECIAL',
-]);
-
-export const missionTypeEnum = pgEnum('mission_type_enum', [
-  'COUNT',
-  'BOOLEAN',
-]);
-
 export const birthdayImageTypeEnum = pgEnum('birthday_image_type_enum', [
   'CAKE',
   'GIFT',
@@ -84,8 +73,13 @@ export const members = pgTable('members', {
   email: varchar('email', { length: 320 }),
   name: varchar('name', { length: 100 }),
   signupCompleted: boolean('signup_completed').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
@@ -103,8 +97,13 @@ export const memberProfiles = pgTable('member_profiles', {
   behanceUrl: varchar('behance_url', { length: 2048 }),
   linkedinUrl: varchar('linkedin_url', { length: 2048 }),
   tistoryUrl: varchar('tistory_url', { length: 2048 }),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export const generations = pgTable(
@@ -115,8 +114,13 @@ export const generations = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
     endedAt: timestamp('ended_at', { withTimezone: true }).notNull(),
     status: generationStatusEnum('status').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [uniqueIndex('generations_number_uq').on(table.number)],
 );
@@ -136,8 +140,13 @@ export const memberGenerationActivities = pgTable(
     status: generationActivityStatusEnum('status').notNull(),
     joinedAt: timestamp('joined_at', { withTimezone: true }).notNull(),
     leftAt: timestamp('left_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     unique('member_generation_activities_member_generation_uq').on(
@@ -161,8 +170,13 @@ export const inviteCodes = pgTable(
     platform: platformEnum('platform').notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     isActive: boolean('is_active').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     uniqueIndex('invite_codes_code_uq').on(table.code),
@@ -182,7 +196,9 @@ export const inviteCodeUsages = pgTable(
       .notNull()
       .references(() => members.id, { onDelete: 'cascade' }),
     usedAt: timestamp('used_at', { withTimezone: true }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     index('invite_code_usages_invite_code_id_idx').on(table.inviteCodeId),
@@ -200,7 +216,9 @@ export const refreshTokens = pgTable(
     tokenHash: varchar('token_hash', { length: 255 }).notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [index('refresh_tokens_member_id_idx').on(table.memberId)],
 );
@@ -221,8 +239,13 @@ export const seminarSchedules = pgTable(
     venueLat: numeric('venue_lat', { precision: 9, scale: 6 }),
     venueLng: numeric('venue_lng', { precision: 9, scale: 6 }),
     notice: text('notice').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index('seminar_schedules_generation_id_idx').on(table.generationId),
@@ -241,8 +264,13 @@ export const seminarSections = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true }),
     endedAt: timestamp('ended_at', { withTimezone: true }),
     sortOrder: integer('sort_order').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     unique('seminar_sections_schedule_sort_order_uq').on(
@@ -265,8 +293,13 @@ export const seminarItems = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true }),
     endedAt: timestamp('ended_at', { withTimezone: true }),
     sortOrder: integer('sort_order').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     unique('seminar_items_section_sort_order_uq').on(
@@ -289,8 +322,13 @@ export const attendanceCheckpoints = pgTable(
     openedAt: timestamp('opened_at', { withTimezone: true }).notNull(),
     lateAt: timestamp('late_at', { withTimezone: true }).notNull(),
     closedAt: timestamp('closed_at', { withTimezone: true }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     unique('attendance_checkpoints_schedule_round_uq').on(
@@ -320,8 +358,13 @@ export const seminarAttendanceRecords = pgTable(
     status: attendanceStatusEnum('status').notNull(),
     checkedAt: timestamp('checked_at', { withTimezone: true }),
     checkMethod: attendanceCheckMethodEnum('check_method'),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     unique('seminar_attendance_records_checkpoint_member_uq').on(
@@ -341,8 +384,13 @@ export const carrotRounds = pgTable(
     roundNo: integer('round_no').notNull(),
     startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
     endedAt: timestamp('ended_at', { withTimezone: true }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     unique('carrot_rounds_generation_round_uq').on(
@@ -365,7 +413,9 @@ export const carrotRoundRankings = pgTable(
       .references(() => members.id, { onDelete: 'cascade' }),
     finalRank: integer('final_rank').notNull(),
     finalScore: integer('final_score').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     unique('carrot_round_rankings_round_member_uq').on(
@@ -396,7 +446,9 @@ export const carrotShakeEvents = pgTable(
       .notNull()
       .references(() => members.id, { onDelete: 'cascade' }),
     scoreDelta: integer('score_delta').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     index('carrot_shake_events_round_id_idx').on(table.roundId),
@@ -415,139 +467,19 @@ export const carrotStakedCount = pgTable(
       .references(() => generations.id, { onDelete: 'cascade' }),
     platform: platformEnum('platform').notNull(),
     shakeCount: bigint('shake_count', { mode: 'number' }).notNull(),
-    createdAt: timestamp('created_at').notNull(),
-    updatedAt: timestamp('updated_at').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     primaryKey({ columns: [table.memberId, table.generationId] }),
     unique('carrot_staked_count_member_generation_uq').on(
       table.memberId,
       table.generationId,
-    ),
-  ],
-);
-
-export const mashongs = pgTable(
-  'mashongs',
-  {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    generationId: bigint('generation_id', { mode: 'number' })
-      .notNull()
-      .references(() => generations.id, { onDelete: 'cascade' }),
-    platform: platformEnum('platform').notNull(),
-    level: integer('level').notNull(),
-    currentPopcorn: integer('current_popcorn').notNull(),
-    totalPopcornEarned: integer('total_popcorn_earned').notNull(),
-    bornAt: timestamp('born_at', { withTimezone: true }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
-  },
-  (table) => [
-    unique('mashongs_generation_platform_uq').on(
-      table.generationId,
-      table.platform,
-    ),
-    check('mashongs_level_gte_1_ck', sql`${table.level} >= 1`),
-    check(
-      'mashongs_current_popcorn_gte_0_ck',
-      sql`${table.currentPopcorn} >= 0`,
-    ),
-    check(
-      'mashongs_total_popcorn_earned_gte_0_ck',
-      sql`${table.totalPopcornEarned} >= 0`,
-    ),
-  ],
-);
-
-export const mashongDailyVisits = pgTable(
-  'mashong_daily_visits',
-  {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    mashongId: bigint('mashong_id', { mode: 'number' })
-      .notNull()
-      .references(() => mashongs.id, { onDelete: 'cascade' }),
-    memberId: bigint('member_id', { mode: 'number' })
-      .notNull()
-      .references(() => members.id, { onDelete: 'cascade' }),
-    visitDate: date('visit_date').notNull(),
-    visitSeq: integer('visit_seq').notNull(),
-    rewardedPopcorn: integer('rewarded_popcorn').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-  },
-  (table) => [
-    index('mashong_daily_visits_mashong_id_idx').on(table.mashongId),
-    unique('mashong_daily_visits_member_visit_date_uq').on(
-      table.memberId,
-      table.visitDate,
-    ),
-    check(
-      'mashong_daily_visits_visit_seq_gte_1_ck',
-      sql`${table.visitSeq} >= 1`,
-    ),
-    check(
-      'mashong_daily_visits_rewarded_popcorn_gte_0_ck',
-      sql`${table.rewardedPopcorn} >= 0`,
-    ),
-  ],
-);
-
-export const mashongMissions = pgTable(
-  'mashong_missions',
-  {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    generationId: bigint('generation_id', { mode: 'number' })
-      .notNull()
-      .references(() => generations.id, { onDelete: 'cascade' }),
-    platform: platformEnum('platform').notNull(),
-    missionCategory: missionCategoryEnum('mission_category').notNull(),
-    missionType: missionTypeEnum('mission_type').notNull(),
-    name: varchar('name', { length: 255 }).notNull(),
-    description: text('description').notNull(),
-    targetValue: integer('target_value').notNull(),
-    rewardPopcorn: integer('reward_popcorn').notNull(),
-    isActive: boolean('is_active').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
-  },
-  (table) => [
-    index('mashong_missions_generation_id_idx').on(table.generationId),
-    check(
-      'mashong_missions_target_value_gte_0_ck',
-      sql`${table.targetValue} >= 0`,
-    ),
-    check(
-      'mashong_missions_reward_popcorn_gte_0_ck',
-      sql`${table.rewardPopcorn} >= 0`,
-    ),
-  ],
-);
-
-export const mashongMissionCompletions = pgTable(
-  'mashong_mission_completions',
-  {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    missionId: bigint('mission_id', { mode: 'number' })
-      .notNull()
-      .references(() => mashongMissions.id, { onDelete: 'cascade' }),
-    memberId: bigint('member_id', { mode: 'number' })
-      .notNull()
-      .references(() => members.id, { onDelete: 'cascade' }),
-    mashongId: bigint('mashong_id', { mode: 'number' })
-      .notNull()
-      .references(() => mashongs.id, { onDelete: 'cascade' }),
-    rewardedPopcorn: integer('rewarded_popcorn').notNull(),
-    completedAt: timestamp('completed_at', { withTimezone: true }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-  },
-  (table) => [
-    unique('mashong_mission_completions_mission_member_uq').on(
-      table.missionId,
-      table.memberId,
-    ),
-    index('mashong_mission_completions_mashong_id_idx').on(table.mashongId),
-    check(
-      'mashong_mission_completions_rewarded_popcorn_gte_0_ck',
-      sql`${table.rewardedPopcorn} >= 0`,
     ),
   ],
 );
@@ -564,8 +496,13 @@ export const images = pgTable(
     mimeType: varchar('mime_type', { length: 255 }).notNull(),
     isActive: boolean('is_active').notNull(),
     size: bigint('size', { mode: 'number' }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [uniqueIndex('images_storage_path_uq').on(table.storagePath)],
 );
@@ -591,8 +528,13 @@ export const birthdayCards = pgTable(
     ),
     imageType: birthdayImageTypeEnum('image_type').notNull(),
     message: text('message').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     unique('birthday_cards_sender_receiver_generation_uq').on(
@@ -615,8 +557,6 @@ export const membersRelations = relations(members, ({ one, many }) => ({
   seminarAttendanceRecords: many(seminarAttendanceRecords),
   carrotRoundRankings: many(carrotRoundRankings),
   carrotShakeEvents: many(carrotShakeEvents),
-  mashongDailyVisits: many(mashongDailyVisits),
-  mashongMissionCompletions: many(mashongMissionCompletions),
   sentBirthdayCards: many(birthdayCards, { relationName: 'birthday_sender' }),
   receivedBirthdayCards: many(birthdayCards, {
     relationName: 'birthday_receiver',
@@ -636,8 +576,6 @@ export const generationsRelations = relations(generations, ({ many }) => ({
   inviteCodes: many(inviteCodes),
   seminarSchedules: many(seminarSchedules),
   carrotRounds: many(carrotRounds),
-  mashongs: many(mashongs),
-  mashongMissions: many(mashongMissions),
   birthdayCards: many(birthdayCards),
   carrotStakedCounts: many(carrotStakedCount),
 }));
@@ -794,58 +732,6 @@ export const carrotStakedCountRelations = relations(
     generation: one(generations, {
       fields: [carrotStakedCount.generationId],
       references: [generations.id],
-    }),
-  }),
-);
-
-export const mashongsRelations = relations(mashongs, ({ one, many }) => ({
-  generation: one(generations, {
-    fields: [mashongs.generationId],
-    references: [generations.id],
-  }),
-  mashongDailyVisits: many(mashongDailyVisits),
-  mashongMissionCompletions: many(mashongMissionCompletions),
-}));
-
-export const mashongDailyVisitsRelations = relations(
-  mashongDailyVisits,
-  ({ one }) => ({
-    mashong: one(mashongs, {
-      fields: [mashongDailyVisits.mashongId],
-      references: [mashongs.id],
-    }),
-    member: one(members, {
-      fields: [mashongDailyVisits.memberId],
-      references: [members.id],
-    }),
-  }),
-);
-
-export const mashongMissionsRelations = relations(
-  mashongMissions,
-  ({ one, many }) => ({
-    generation: one(generations, {
-      fields: [mashongMissions.generationId],
-      references: [generations.id],
-    }),
-    completions: many(mashongMissionCompletions),
-  }),
-);
-
-export const mashongMissionCompletionsRelations = relations(
-  mashongMissionCompletions,
-  ({ one }) => ({
-    mission: one(mashongMissions, {
-      fields: [mashongMissionCompletions.missionId],
-      references: [mashongMissions.id],
-    }),
-    member: one(members, {
-      fields: [mashongMissionCompletions.memberId],
-      references: [members.id],
-    }),
-    mashong: one(mashongs, {
-      fields: [mashongMissionCompletions.mashongId],
-      references: [mashongs.id],
     }),
   }),
 );
