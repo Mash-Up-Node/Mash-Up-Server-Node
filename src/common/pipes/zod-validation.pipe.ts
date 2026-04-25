@@ -14,8 +14,8 @@
  * @Post()
  * create(@Body(new ZodValidationPipe(CreateUserDto)) body: CreateUserDtoType) {}
  */
-import { HttpStatus, PipeTransform } from '@nestjs/common';
-import { BaseException } from '../exception/base.exception';
+import { PipeTransform } from '@nestjs/common';
+import { ValidationException } from '../exception/validation.exception';
 import type { ZodType } from 'zod';
 
 export class ZodValidationPipe<T = unknown> implements PipeTransform<
@@ -40,9 +40,7 @@ export class ZodValidationPipe<T = unknown> implements PipeTransform<
         }),
       ];
 
-      throw new BaseException(
-        HttpStatus.BAD_REQUEST,
-        'VALIDATION_ERROR',
+      throw new ValidationException(
         messages.join(', ') || '요청값 형식이 올바르지 않습니다.',
       );
     }
