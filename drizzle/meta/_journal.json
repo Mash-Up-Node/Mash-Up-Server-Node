@@ -8,6 +8,20 @@
       "when": 1776967640940,
       "tag": "0000_fancy_firelord",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777145870231,
+      "tag": "0001_complex_meltdown",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777149416069,
+      "tag": "0002_round_scarlet_spider",
+      "breakpoints": true
     }
   ]
 }
