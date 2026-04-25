@@ -30,6 +30,7 @@ const memberFixture = (
 
 describe('AuthService', () => {
   const naverOAuthService = {
+    providerName: 'NAVER' as const,
     getProfile: jest.fn(),
   };
   const accessTokenService = {

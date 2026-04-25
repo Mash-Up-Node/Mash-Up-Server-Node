@@ -7,7 +7,10 @@ import { members } from '../schema';
 import { AuthConflictException } from './auth.errors';
 import { AuthClient, Member } from './auth.types';
 import { NaverOAuthService } from './oauth/naver-oauth.service';
-import { OAuthUserProfile } from './oauth/oauth-provider.interface';
+import {
+  OAuthProvider,
+  OAuthUserProfile,
+} from './oauth/oauth-provider.interface';
 import { AccessTokenService } from './services/access-token.service';
 import { RefreshTokenService } from './services/refresh-token.service';
 
@@ -54,7 +57,10 @@ export class AuthService {
     authClient: AuthClient,
   ): Promise<NaverLoginResult> {
     const profile = await this.naverOAuthService.getProfile(authorizationCode);
-    const member = await this.findOrCreateOAuthMember(profile);
+    const member = await this.findOrCreateOAuthMember(
+      this.naverOAuthService,
+      profile,
+    );
 
     const accessToken = this.accessTokenService.issue(
       member.id,
@@ -91,12 +97,15 @@ export class AuthService {
   }
 
   private async findOrCreateOAuthMember(
+    oauthProvider: OAuthProvider,
     profile: OAuthUserProfile,
   ): Promise<Member> {
+    const providerName = oauthProvider.providerName;
+
     const [createdMember] = await this.db
       .insert(members)
       .values({
-        oauthProvider: 'NAVER',
+        oauthProvider: providerName,
         oauthProviderUserId: profile.providerUserId,
         email: profile.email,
         signupCompleted: false,
@@ -113,7 +122,7 @@ export class AuthService {
       .from(members)
       .where(
         and(
-          eq(members.oauthProvider, 'NAVER'),
+          eq(members.oauthProvider, providerName),
           eq(members.oauthProviderUserId, profile.providerUserId),
           isNull(members.deletedAt),
         ),
@@ -123,7 +132,7 @@ export class AuthService {
     if (!existingMember) {
       // insert 충돌 후 활성 회원을 찾지 못한 경우 — soft-delete된 계정과 OAuth ID가 충돌했을 가능성
       this.logger.warn(
-        `OAuth 충돌 후 활성 회원 조회 실패: provider=NAVER, providerUserId=${profile.providerUserId}`,
+        `OAuth 충돌 후 활성 회원 조회 실패: provider=${providerName}, providerUserId=${profile.providerUserId}`,
       );
       throw new AuthConflictException();
     }

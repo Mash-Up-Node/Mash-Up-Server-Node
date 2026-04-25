@@ -17,6 +17,8 @@ type NaverProfileResponse = {
 
 @Injectable()
 export class NaverOAuthService implements OAuthProvider {
+  readonly providerName = 'NAVER' as const;
+
   constructor() {
     if (!process.env.NAVER_CLIENT_ID || !process.env.NAVER_CLIENT_SECRET) {
       throw new Error('NAVER_CLIENT_ID and NAVER_CLIENT_SECRET are required.');
