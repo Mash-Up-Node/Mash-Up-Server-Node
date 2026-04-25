@@ -15,28 +15,13 @@
  * create(@Body(new ZodValidationPipe(CreateUserDto)) body: CreateUserDtoType) {}
  */
 import { BadRequestException, PipeTransform } from '@nestjs/common';
-
-type ZodSafeParseResult<T> =
-  | {
-      success: true;
-      data: T;
-    }
-  | {
-      success: false;
-      error: {
-        flatten: () => unknown;
-      };
-    };
-
-export type ZodSchema<T = unknown> = {
-  safeParse: (value: unknown) => ZodSafeParseResult<T>;
-};
+import type { ZodType } from 'zod';
 
 export class ZodValidationPipe<T = unknown> implements PipeTransform<
   unknown,
   T
 > {
-  constructor(private readonly schema: ZodSchema<T>) {}
+  constructor(private readonly schema: ZodType<T>) {}
 
   transform(value: unknown): T {
     const result = this.schema.safeParse(value);
