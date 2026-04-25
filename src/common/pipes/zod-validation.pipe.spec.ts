@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { ValidationException } from '../exception/validation.exception';
 import { z } from 'zod';
 import { ZodValidationPipe } from './zod-validation.pipe';
 
@@ -17,7 +17,7 @@ describe('ZodValidationPipe', () => {
     });
   });
 
-  it('invalid payload면 code와 message를 포함한 BadRequestException을 던진다', () => {
+  it('invalid payload면 errorCode와 message를 포함한 ValidationException을 던진다', () => {
     const pipe = new ZodValidationPipe(schema);
 
     expect.assertions(3);
@@ -25,13 +25,13 @@ describe('ZodValidationPipe', () => {
     try {
       pipe.transform({ name: '', age: -1 });
     } catch (error) {
-      expect(error).toBeInstanceOf(BadRequestException);
-      expect((error as BadRequestException).getResponse()).toMatchObject({
-        code: 'VALIDATION_ERROR',
+      expect(error).toBeInstanceOf(ValidationException);
+      expect((error as ValidationException).getResponse()).toMatchObject({
+        errorCode: 'VALIDATION_ERROR',
         message: expect.any(String),
       });
       expect(
-        ((error as BadRequestException).getResponse() as { message: string })
+        ((error as ValidationException).getResponse() as { message: string })
           .message,
       ).toContain('name:');
     }
