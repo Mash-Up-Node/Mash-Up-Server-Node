@@ -70,8 +70,8 @@ CREATE TABLE "carrot_staked_count" (
 	"generation_id" bigint NOT NULL,
 	"platform" "platform_enum" NOT NULL,
 	"shake_count" bigint NOT NULL,
-	"created_at" timestamp NOT NULL DEFAULT now(),
-	"updated_at" timestamp NOT NULL DEFAULT now(),
+	"created_at" timestamp with time zone NOT NULL DEFAULT now(),
+	"updated_at" timestamp with time zone NOT NULL DEFAULT now(),
 	CONSTRAINT "carrot_staked_count_member_id_generation_id_pk" PRIMARY KEY("member_id","generation_id"),
 	CONSTRAINT "carrot_staked_count_member_generation_uq" UNIQUE("member_id","generation_id")
 );

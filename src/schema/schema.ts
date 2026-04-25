@@ -467,8 +467,10 @@ export const carrotStakedCount = pgTable(
       .references(() => generations.id, { onDelete: 'cascade' }),
     platform: platformEnum('platform').notNull(),
     shakeCount: bigint('shake_count', { mode: 'number' }).notNull(),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
