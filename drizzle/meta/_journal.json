@@ -8,6 +8,13 @@
       "when": 1776967640940,
       "tag": "0000_fancy_firelord",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777220535318,
+      "tag": "0001_amazing_skin",
+      "breakpoints": true
     }
   ]
 }
