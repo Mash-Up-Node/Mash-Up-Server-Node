@@ -15,6 +15,8 @@ type NaverProfileResponse = {
   };
 };
 
+const NAVER_SUCCESS_RESULT_CODE = '00';
+
 @Injectable()
 export class NaverOAuthService implements OAuthProvider {
   readonly providerName = 'NAVER' as const;
@@ -89,7 +91,7 @@ export class NaverOAuthService implements OAuthProvider {
 
     const body = (await response.json()) as NaverProfileResponse;
 
-    if (body.resultcode !== '00') {
+    if (body.resultcode !== NAVER_SUCCESS_RESULT_CODE) {
       throw new NaverAuthFailedException();
     }
 
