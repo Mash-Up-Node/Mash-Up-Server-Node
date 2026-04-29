@@ -586,6 +586,7 @@ export const membersRelations = relations(members, ({ one, many }) => ({
     relationName: 'birthday_receiver',
   }),
   uploadedImages: many(images),
+  mashongAttendance: many(mashongAttendance),
 }));
 
 export const memberProfilesRelations = relations(memberProfiles, ({ one }) => ({

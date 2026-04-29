@@ -3,11 +3,8 @@ import { DRIZZLE_DB } from '../db/db.constants';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../schema';
 import { and, desc, eq } from 'drizzle-orm';
-import { mashong, mashongAttendance } from '../schema';
+import { mashongAttendance } from '../schema';
 import { CheckAttendanceResponseDto } from './dto/check-attendance.response';
-import { Platform } from '../common/type/user';
-import { GetMashongInfoResponseDto } from './dto/get-mashong-info.response';
-import { MashongException } from './mashong.exception';
 
 const ATTENDANCE_INTERVAL_MS = 30 * 60 * 1000;
 
@@ -83,36 +80,5 @@ export class MashongService {
       .orderBy(desc(mashongAttendance.seq))
       .limit(1)
       .then((rows) => rows[0] ?? null);
-  }
-
-  async getMashongInfo(
-    platform: string,
-    generationId: number,
-  ): Promise<GetMashongInfoResponseDto> {
-    const result = await this.db
-      .select()
-      .from(mashong)
-      .where(
-        and(
-          eq(mashong.platform, Platform[platform]),
-          eq(mashong.generationId, generationId),
-        ),
-      )
-      .limit(1);
-
-    if (result.length === 0) {
-      throw MashongException.mashongNotFound();
-    }
-
-    const mashongInfo = result[0];
-
-    return {
-      id: mashongInfo.id,
-      platform: platform,
-      level: mashongInfo.level,
-      accumulatedPopcorn: mashongInfo.accumulatedPopcorn,
-      lastPopcorn: mashongInfo.lastPopcorn,
-      goalPopcorn: mashongInfo.goalPopcorn,
-    };
   }
 }
