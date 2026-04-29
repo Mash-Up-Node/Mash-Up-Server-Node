@@ -1,11 +1,7 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { and, eq, isNull } from 'drizzle-orm';
-import { DRIZZLE_DB } from '../db/db.constants';
-import * as schema from '../schema';
-import { members } from '../schema';
+import { Injectable, Logger } from '@nestjs/common';
 import { AuthConflictException } from './auth.errors';
 import { AuthClient, Member } from './auth.types';
+import { MemberRepository } from './member.repository';
 import { NaverOAuthService } from './oauth/naver-oauth.service';
 import {
   OAuthProvider,
@@ -45,8 +41,7 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
-    @Inject(DRIZZLE_DB)
-    private readonly db: NodePgDatabase<typeof schema>,
+    private readonly memberRepository: MemberRepository,
     private readonly naverOAuthService: NaverOAuthService,
     private readonly accessTokenService: AccessTokenService,
     private readonly refreshTokenService: RefreshTokenService,
@@ -102,32 +97,21 @@ export class AuthService {
   ): Promise<Member> {
     const providerName = oauthProvider.providerName;
 
-    const [createdMember] = await this.db
-      .insert(members)
-      .values({
-        oauthProvider: providerName,
-        oauthProviderUserId: profile.providerUserId,
-        email: profile.email,
-        signupCompleted: false,
-      })
-      .onConflictDoNothing()
-      .returning();
+    const createdMember = await this.memberRepository.createOAuthMember(
+      providerName,
+      profile.providerUserId,
+      profile.email,
+    );
 
     if (createdMember) {
       return createdMember;
     }
 
-    const [existingMember] = await this.db
-      .select()
-      .from(members)
-      .where(
-        and(
-          eq(members.oauthProvider, providerName),
-          eq(members.oauthProviderUserId, profile.providerUserId),
-          isNull(members.deletedAt),
-        ),
-      )
-      .limit(1);
+    const existingMember =
+      await this.memberRepository.findActiveByOAuthIdentity(
+        providerName,
+        profile.providerUserId,
+      );
 
     if (!existingMember) {
       // insert 충돌 후 활성 회원을 찾지 못한 경우 — soft-delete된 계정과 OAuth ID가 충돌했을 가능성

@@ -39,27 +39,22 @@ describe('AuthService', () => {
   const refreshTokenService = {
     issue: jest.fn(),
   };
+  const memberRepository = {
+    createOAuthMember: jest.fn(),
+    findActiveByOAuthIdentity: jest.fn(),
+  };
 
-  const createService = (createdRows: unknown[], selectedRows: unknown[]) => {
-    const db = {
-      insert: jest.fn().mockReturnValue({
-        values: jest.fn().mockReturnValue({
-          onConflictDoNothing: jest.fn().mockReturnValue({
-            returning: jest.fn().mockResolvedValue(createdRows),
-          }),
-        }),
-      }),
-      select: jest.fn().mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockReturnValue({
-            limit: jest.fn().mockResolvedValue(selectedRows),
-          }),
-        }),
-      }),
-    };
+  const createService = (
+    createdMember: MemberFixture | undefined,
+    existingMember: MemberFixture | undefined,
+  ) => {
+    memberRepository.createOAuthMember.mockResolvedValue(createdMember);
+    memberRepository.findActiveByOAuthIdentity.mockResolvedValue(
+      existingMember,
+    );
 
     return new AuthService(
-      db as never,
+      memberRepository as never,
       naverOAuthService as never,
       accessTokenService as never,
       refreshTokenService as never,
@@ -80,7 +75,7 @@ describe('AuthService', () => {
   });
 
   it('신규 OAuth 사용자를 생성하고 access token과 가입 필요 응답을 반환한다', async () => {
-    const service = createService([memberFixture()], []);
+    const service = createService(memberFixture(), undefined);
 
     await expect(
       service.loginWithNaver('authorization-code', 'WEB'),
@@ -90,12 +85,18 @@ describe('AuthService', () => {
       accessToken: 'access-token',
       requiredFields: ['name', 'platform', 'inviteCode'],
     });
+    expect(memberRepository.createOAuthMember).toHaveBeenCalledWith(
+      'NAVER',
+      'naver-id',
+      'user@example.com',
+    );
+    expect(memberRepository.findActiveByOAuthIdentity).not.toHaveBeenCalled();
     expect(accessTokenService.issue).toHaveBeenCalledWith(1, false);
     expect(refreshTokenService.issue).not.toHaveBeenCalled();
   });
 
   it('기존 가입 미완료 사용자는 access token과 가입 필요 응답을 반환한다', async () => {
-    const service = createService([], [memberFixture()]);
+    const service = createService(undefined, memberFixture());
 
     await expect(
       service.loginWithNaver('authorization-code', 'WEB'),
@@ -104,13 +105,17 @@ describe('AuthService', () => {
       signupCompleted: false,
       accessToken: 'access-token',
     });
+    expect(memberRepository.findActiveByOAuthIdentity).toHaveBeenCalledWith(
+      'NAVER',
+      'naver-id',
+    );
     expect(refreshTokenService.issue).not.toHaveBeenCalled();
   });
 
   it('기존 가입 완료 사용자에게 access/refresh token을 발급한다', async () => {
     const service = createService(
-      [],
-      [memberFixture({ signupCompleted: true, name: 'Mashup' })],
+      undefined,
+      memberFixture({ signupCompleted: true, name: 'Mashup' }),
     );
 
     await expect(
@@ -127,7 +132,7 @@ describe('AuthService', () => {
   });
 
   it('unique 충돌 후 활성 회원을 찾지 못하면 충돌 예외를 던진다', async () => {
-    const service = createService([], []);
+    const service = createService(undefined, undefined);
 
     await expect(
       service.loginWithNaver('authorization-code', 'WEB'),
