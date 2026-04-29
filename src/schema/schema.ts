@@ -545,6 +545,49 @@ export const birthdayCards = pgTable(
   ],
 );
 
+export const mashong = pgTable(
+  'mashong',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    generationId: bigint('generateion_id', { mode: 'number' })
+      .notNull()
+      .references(() => generations.id, { onDelete: 'cascade' }),
+    platform: platformEnum('platform').notNull(),
+    level: bigint('level', { mode: 'number' }).notNull().default(1),
+    accumulatedPopcorn: bigint('accumulated_popcorn', { mode: 'number' })
+      .notNull()
+      .default(0),
+    lastPopcorn: bigint('last_popcorn', { mode: 'number' })
+      .notNull()
+      .default(0),
+    goalPopcorn: bigint('goal_popcorn', { mode: 'number' })
+      .notNull()
+      .default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    unique('mashong_generation_platform_uq').on(
+      table.generationId,
+      table.platform,
+    ),
+  ],
+);
+
+export const mashongLevel = pgTable(
+  'mashong_level',
+  {
+    level: bigint('level', { mode: 'number' }).notNull(),
+    goalPopcorn: bigint('goal_popcorn', { mode: 'number' }).notNull(),
+  },
+  (table) => [unique('mashong_level_uq').on(table.level)],
+);
+
 export const membersRelations = relations(members, ({ one, many }) => ({
   profile: one(memberProfiles, {
     fields: [members.id],
@@ -578,6 +621,7 @@ export const generationsRelations = relations(generations, ({ many }) => ({
   carrotRounds: many(carrotRounds),
   birthdayCards: many(birthdayCards),
   carrotStakedCounts: many(carrotStakedCount),
+  mashong: many(mashong),
 }));
 
 export const memberGenerationActivitiesRelations = relations(
