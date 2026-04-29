@@ -9,7 +9,6 @@ import {
   numeric,
   pgEnum,
   pgTable,
-  primaryKey,
   text,
   timestamp,
   unique,
@@ -56,13 +55,6 @@ export const attendanceCheckMethodEnum = pgEnum(
   'attendance_check_method_enum',
   ['QR', 'MANUAL'],
 );
-
-export const birthdayImageTypeEnum = pgEnum('birthday_image_type_enum', [
-  'CAKE',
-  'GIFT',
-  'PARTY',
-  'CUSTOM',
-]);
 
 export const members = pgTable(
   'members',
@@ -366,177 +358,6 @@ export const seminarAttendanceRecords = pgTable(
   ],
 );
 
-export const carrotRounds = pgTable(
-  'carrot_rounds',
-  {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    generationId: bigint('generation_id', { mode: 'number' })
-      .notNull()
-      .references(() => generations.id, { onDelete: 'cascade' }),
-    roundNo: integer('round_no').notNull(),
-    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
-    endedAt: timestamp('ended_at', { withTimezone: true }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => [
-    unique('carrot_rounds_generation_round_uq').on(
-      table.generationId,
-      table.roundNo,
-    ),
-    check('carrot_rounds_round_no_gte_1_ck', sql`${table.roundNo} >= 1`),
-  ],
-);
-
-export const carrotRoundRankings = pgTable(
-  'carrot_round_rankings',
-  {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    roundId: bigint('round_id', { mode: 'number' })
-      .notNull()
-      .references(() => carrotRounds.id, { onDelete: 'cascade' }),
-    memberId: bigint('member_id', { mode: 'number' })
-      .notNull()
-      .references(() => members.id, { onDelete: 'cascade' }),
-    finalRank: integer('final_rank').notNull(),
-    finalScore: integer('final_score').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    unique('carrot_round_rankings_round_member_uq').on(
-      table.roundId,
-      table.memberId,
-    ),
-    index('carrot_round_rankings_round_id_idx').on(table.roundId),
-    index('carrot_round_rankings_member_id_idx').on(table.memberId),
-    check(
-      'carrot_round_rankings_final_rank_gte_1_ck',
-      sql`${table.finalRank} >= 1`,
-    ),
-    check(
-      'carrot_round_rankings_final_score_gte_0_ck',
-      sql`${table.finalScore} >= 0`,
-    ),
-  ],
-);
-
-export const carrotShakeEvents = pgTable(
-  'carrot_shake_events',
-  {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    roundId: bigint('round_id', { mode: 'number' })
-      .notNull()
-      .references(() => carrotRounds.id, { onDelete: 'cascade' }),
-    memberId: bigint('member_id', { mode: 'number' })
-      .notNull()
-      .references(() => members.id, { onDelete: 'cascade' }),
-    scoreDelta: integer('score_delta').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    index('carrot_shake_events_round_id_idx').on(table.roundId),
-    index('carrot_shake_events_member_id_idx').on(table.memberId),
-  ],
-);
-
-export const carrotStakedCount = pgTable(
-  'carrot_staked_count',
-  {
-    memberId: bigint('member_id', { mode: 'number' })
-      .notNull()
-      .references(() => members.id, { onDelete: 'cascade' }),
-    generationId: bigint('generation_id', { mode: 'number' })
-      .notNull()
-      .references(() => generations.id, { onDelete: 'cascade' }),
-    platform: platformEnum('platform').notNull(),
-    shakeCount: bigint('shake_count', { mode: 'number' }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => [
-    primaryKey({ columns: [table.memberId, table.generationId] }),
-    unique('carrot_staked_count_member_generation_uq').on(
-      table.memberId,
-      table.generationId,
-    ),
-  ],
-);
-
-export const images = pgTable(
-  'images',
-  {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    uploaderId: bigint('uploader_id', { mode: 'number' })
-      .notNull()
-      .references(() => members.id, { onDelete: 'cascade' }),
-    storagePath: varchar('storage_path', { length: 2048 }).notNull(),
-    originalName: varchar('original_name', { length: 512 }).notNull(),
-    mimeType: varchar('mime_type', { length: 255 }).notNull(),
-    isActive: boolean('is_active').notNull(),
-    size: bigint('size', { mode: 'number' }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => [uniqueIndex('images_storage_path_uq').on(table.storagePath)],
-);
-
-export const birthdayCards = pgTable(
-  'birthday_cards',
-  {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    senderMemberId: bigint('sender_member_id', { mode: 'number' })
-      .notNull()
-      .references(() => members.id, { onDelete: 'cascade' }),
-    receiverMemberId: bigint('receiver_member_id', { mode: 'number' })
-      .notNull()
-      .references(() => members.id, { onDelete: 'cascade' }),
-    generationId: bigint('generation_id', { mode: 'number' })
-      .notNull()
-      .references(() => generations.id, { onDelete: 'cascade' }),
-    imageId: bigint('image_id', { mode: 'number' }).references(
-      () => images.id,
-      {
-        onDelete: 'set null',
-      },
-    ),
-    imageType: birthdayImageTypeEnum('image_type').notNull(),
-    message: text('message').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => [
-    unique('birthday_cards_sender_receiver_generation_uq').on(
-      table.senderMemberId,
-      table.receiverMemberId,
-      table.generationId,
-    ),
-  ],
-);
-
 export const membersRelations = relations(members, ({ one, many }) => ({
   profile: one(memberProfiles, {
     fields: [members.id],
@@ -546,13 +367,6 @@ export const membersRelations = relations(members, ({ one, many }) => ({
   createdInviteCodes: many(inviteCodes),
   inviteCodeUsages: many(inviteCodeUsages),
   seminarAttendanceRecords: many(seminarAttendanceRecords),
-  carrotRoundRankings: many(carrotRoundRankings),
-  carrotShakeEvents: many(carrotShakeEvents),
-  sentBirthdayCards: many(birthdayCards, { relationName: 'birthday_sender' }),
-  receivedBirthdayCards: many(birthdayCards, {
-    relationName: 'birthday_receiver',
-  }),
-  uploadedImages: many(images),
 }));
 
 export const memberProfilesRelations = relations(memberProfiles, ({ one }) => ({
@@ -566,9 +380,6 @@ export const generationsRelations = relations(generations, ({ many }) => ({
   memberGenerationActivities: many(memberGenerationActivities),
   inviteCodes: many(inviteCodes),
   seminarSchedules: many(seminarSchedules),
-  carrotRounds: many(carrotRounds),
-  birthdayCards: many(birthdayCards),
-  carrotStakedCounts: many(carrotStakedCount),
 }));
 
 export const memberGenerationActivitiesRelations = relations(
@@ -665,86 +476,3 @@ export const seminarAttendanceRecordsRelations = relations(
     }),
   }),
 );
-
-export const carrotRoundsRelations = relations(
-  carrotRounds,
-  ({ one, many }) => ({
-    generation: one(generations, {
-      fields: [carrotRounds.generationId],
-      references: [generations.id],
-    }),
-    carrotRoundRankings: many(carrotRoundRankings),
-    carrotShakeEvents: many(carrotShakeEvents),
-  }),
-);
-
-export const carrotRoundRankingsRelations = relations(
-  carrotRoundRankings,
-  ({ one }) => ({
-    round: one(carrotRounds, {
-      fields: [carrotRoundRankings.roundId],
-      references: [carrotRounds.id],
-    }),
-    member: one(members, {
-      fields: [carrotRoundRankings.memberId],
-      references: [members.id],
-    }),
-  }),
-);
-
-export const carrotShakeEventsRelations = relations(
-  carrotShakeEvents,
-  ({ one }) => ({
-    round: one(carrotRounds, {
-      fields: [carrotShakeEvents.roundId],
-      references: [carrotRounds.id],
-    }),
-    member: one(members, {
-      fields: [carrotShakeEvents.memberId],
-      references: [members.id],
-    }),
-  }),
-);
-
-export const carrotStakedCountRelations = relations(
-  carrotStakedCount,
-  ({ one }) => ({
-    member: one(members, {
-      fields: [carrotStakedCount.memberId],
-      references: [members.id],
-    }),
-    generation: one(generations, {
-      fields: [carrotStakedCount.generationId],
-      references: [generations.id],
-    }),
-  }),
-);
-
-export const imagesRelations = relations(images, ({ one, many }) => ({
-  uploader: one(members, {
-    fields: [images.uploaderId],
-    references: [members.id],
-  }),
-  birthdayCards: many(birthdayCards),
-}));
-
-export const birthdayCardsRelations = relations(birthdayCards, ({ one }) => ({
-  sender: one(members, {
-    fields: [birthdayCards.senderMemberId],
-    references: [members.id],
-    relationName: 'birthday_sender',
-  }),
-  receiver: one(members, {
-    fields: [birthdayCards.receiverMemberId],
-    references: [members.id],
-    relationName: 'birthday_receiver',
-  }),
-  generation: one(generations, {
-    fields: [birthdayCards.generationId],
-    references: [generations.id],
-  }),
-  image: one(images, {
-    fields: [birthdayCards.imageId],
-    references: [images.id],
-  }),
-}));
