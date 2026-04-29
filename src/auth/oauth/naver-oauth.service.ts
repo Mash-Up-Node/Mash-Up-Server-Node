@@ -127,6 +127,7 @@ export class NaverOAuthService implements OAuthProvider {
       () => controller.abort(),
       NAVER_FETCH_TIMEOUT_MS,
     );
+    timeout.unref();
 
     try {
       return await fetch(input, {
