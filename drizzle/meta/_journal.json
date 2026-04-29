@@ -12,15 +12,8 @@
     {
       "idx": 1,
       "version": "7",
-      "when": 1777145870231,
-      "tag": "0001_complex_meltdown",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1777149416069,
-      "tag": "0002_round_scarlet_spider",
+      "when": 1777477273684,
+      "tag": "0001_stiff_wolfsbane",
       "breakpoints": true
     }
   ]

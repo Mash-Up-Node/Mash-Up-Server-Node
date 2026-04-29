@@ -1,2 +1,0 @@
-DROP INDEX "members_oauth_identity_uq";--> statement-breakpoint
-CREATE UNIQUE INDEX "members_oauth_identity_uq" ON "members" USING btree ("oauth_provider","oauth_provider_user_id") WHERE "members"."deleted_at" IS NULL;

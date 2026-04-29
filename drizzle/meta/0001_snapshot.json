@@ -1,5 +1,5 @@
 {
-  "id": "fbac31d4-fa8d-4305-9274-3e1786376a1e",
+  "id": "5d721b4c-d750-4379-a0d2-f4ec14b453da",
   "prevId": "02e434d6-d83f-4424-82b3-1f3184f3d2c6",
   "version": "7",
   "dialect": "postgresql",
@@ -1362,6 +1362,7 @@
             }
           ],
           "isUnique": true,
+          "where": "\"members\".\"deleted_at\" IS NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}
