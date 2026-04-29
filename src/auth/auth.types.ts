@@ -6,7 +6,6 @@ export type Member = typeof members.$inferSelect;
 export type AuthClient = 'WEB' | 'NATIVE';
 
 export type AccessTokenPayload = {
-  sub: string;
   memberId: number;
   signupCompleted: boolean;
 };

@@ -20,7 +20,6 @@ describe('AccessTokenService', () => {
     const token = service.issue(1, true);
 
     expect(service.verify(token)).toMatchObject({
-      sub: '1',
       memberId: 1,
       signupCompleted: true,
     });

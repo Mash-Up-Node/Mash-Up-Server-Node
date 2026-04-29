@@ -3,9 +3,12 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthUnauthorizedException } from '../auth.errors';
 import { AccessTokenPayload } from '../auth.types';
 
+const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 3600;
+
 @Injectable()
 export class AccessTokenService {
   private readonly secret: string;
+  private readonly expiresIn: number;
 
   constructor(private readonly jwtService: JwtService) {
     const secret = process.env.JWT_ACCESS_TOKEN_SECRET;
@@ -15,11 +18,13 @@ export class AccessTokenService {
     }
 
     this.secret = secret;
+    this.expiresIn = this.parseTtlSeconds(
+      process.env.JWT_ACCESS_TOKEN_TTL_SECONDS,
+      DEFAULT_ACCESS_TOKEN_TTL_SECONDS,
+    );
   }
 
   issue(memberId: number, signupCompleted: boolean): string {
-    const expiresIn = Number(process.env.JWT_ACCESS_TOKEN_TTL_SECONDS ?? 3600);
-
     return this.jwtService.sign(
       {
         memberId,
@@ -27,8 +32,7 @@ export class AccessTokenService {
       },
       {
         secret: this.secret,
-        subject: String(memberId),
-        expiresIn,
+        expiresIn: this.expiresIn,
       },
     );
   }
@@ -41,5 +45,11 @@ export class AccessTokenService {
     } catch {
       throw new AuthUnauthorizedException();
     }
+  }
+
+  private parseTtlSeconds(value: string | undefined, fallback: number): number {
+    const ttl = Number(value);
+
+    return Number.isFinite(ttl) && ttl > 0 ? ttl : fallback;
   }
 }

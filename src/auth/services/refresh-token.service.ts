@@ -8,15 +8,23 @@ type StoredRefreshToken = {
   tokenHash: string;
 };
 
+const DEFAULT_REFRESH_TOKEN_TTL_SECONDS = 1209600;
+
 @Injectable()
 export class RefreshTokenService {
-  constructor(@Inject(REDIS_CLIENT) private readonly redisClient: Redis) {}
+  private readonly ttlSeconds: number;
+
+  constructor(@Inject(REDIS_CLIENT) private readonly redisClient: Redis) {
+    this.ttlSeconds = this.parseTtlSeconds(
+      process.env.REFRESH_TOKEN_TTL_SECONDS,
+      DEFAULT_REFRESH_TOKEN_TTL_SECONDS,
+    );
+  }
 
   async issue(memberId: number): Promise<string> {
     const tokenId = randomBytes(16).toString('base64url');
     const tokenSecret = randomBytes(32).toString('base64url');
     const refreshToken = `${tokenId}.${tokenSecret}`;
-    const ttlSeconds = Number(process.env.REFRESH_TOKEN_TTL_SECONDS ?? 1209600);
     const value: StoredRefreshToken = {
       memberId,
       tokenHash: this.hash(refreshToken),
@@ -26,7 +34,7 @@ export class RefreshTokenService {
       this.getKey(tokenId),
       JSON.stringify(value),
       'EX',
-      ttlSeconds,
+      this.ttlSeconds,
     );
 
     return refreshToken;
@@ -54,5 +62,11 @@ export class RefreshTokenService {
 
   private getKey(tokenId: string): string {
     return `auth:refresh:${tokenId}`;
+  }
+
+  private parseTtlSeconds(value: string | undefined, fallback: number): number {
+    const ttl = Number(value);
+
+    return Number.isFinite(ttl) && ttl > 0 ? ttl : fallback;
   }
 }
