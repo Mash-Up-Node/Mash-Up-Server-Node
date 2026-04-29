@@ -26,6 +26,7 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seed/index.ts",
     "db:push:local": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "prepare": "husky"
