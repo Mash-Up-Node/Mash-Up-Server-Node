@@ -1,6 +1,10 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
+  DanggnsFeverRequestDto,
+  DanggnsFeverRequestSchema,
+} from './dto/danggns-fever-request.dto';
+import {
   DanggnsShakeRequestDto,
   DanggnsShakeRequestSchema,
 } from './dto/danggns-shake-request.dto';
@@ -21,5 +25,13 @@ export class DanggnsController {
       body.sentAt,
       body.isFever,
     );
+  }
+
+  @Post('fevers')
+  createFever(
+    @Body(new ZodValidationPipe(DanggnsFeverRequestSchema))
+    body: DanggnsFeverRequestDto,
+  ) {
+    return this.danggnsService.handleFever(body.roundId);
   }
 }
