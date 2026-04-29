@@ -545,6 +545,30 @@ export const birthdayCards = pgTable(
   ],
 );
 
+export const mashongAttendance = pgTable(
+  'mashong_attendance',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    memberId: bigint('member_id', { mode: 'number' })
+      .notNull()
+      .references(() => members.id, { onDelete: 'cascade' }),
+    seq: integer('seq').notNull(),
+    attendanceDate: date('attendance_date', { mode: 'string' })
+      .notNull()
+      .default(sql`CURRENT_DATE`),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique('mashong_attendance_member_date_seq_uq').on(
+      table.memberId,
+      table.attendanceDate,
+      table.seq,
+    ),
+  ],
+);
+
 export const membersRelations = relations(members, ({ one, many }) => ({
   profile: one(memberProfiles, {
     fields: [members.id],
