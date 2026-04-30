@@ -11,14 +11,6 @@ export type RedisSortedSetEntry = {
 export class RankingRepository {
   constructor(@Inject(REDIS_CLIENT) private readonly redisClient: Redis) {}
 
-  zAdd(key: string, score: number, member: string): Promise<number> {
-    return this.redisClient.zadd(key, score, member);
-  }
-
-  zIncrBy(key: string, increment: number, member: string): Promise<string> {
-    return this.redisClient.zincrby(key, increment, member);
-  }
-
   zScore(key: string, member: string): Promise<string | null> {
     return this.redisClient.zscore(key, member);
   }
@@ -35,6 +27,22 @@ export class RankingRepository {
     return this.redisClient
       .zrevrange(key, start, stop, 'WITHSCORES')
       .then((result) => this.toSortedSetEntries(result));
+  }
+
+  async exists(key: string): Promise<boolean> {
+    return (await this.redisClient.exists(key)) === 1;
+  }
+
+  async zAddBulk(
+    key: string,
+    entries: { score: number; member: string }[],
+  ): Promise<void> {
+    if (entries.length === 0) return;
+    const pipeline = this.redisClient.pipeline();
+    for (const { score, member } of entries) {
+      pipeline.zadd(key, score, member);
+    }
+    await pipeline.exec();
   }
 
   private toSortedSetEntries(flattened: string[]): RedisSortedSetEntry[] {
