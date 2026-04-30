@@ -4,6 +4,8 @@ import { DanggnsRepository } from './danggns.repository';
 import { DanggnsCacheRepository } from './danggns-cache.repository';
 import { RankingRepository } from './ranking.repository';
 
+type RoundStatus = 'IN_PROGRESS' | 'ENDED' | 'UPCOMING';
+
 export type DanggnsShakeResponseDto = {
   appliedScore: number;
   currentRoundScore: number;
@@ -16,8 +18,18 @@ export type DanggnsFeverResponseDto = {
   remainingCooltime: number;
 };
 
+export type DanggnsRoundsResponseDto = {
+  roundId: number;
+  roundNo: number;
+  status: RoundStatus;
+  startedAt: string;
+  endedAt: string;
+}[];
+
+// TODO: 인증 구현 후 토큰에서 추출한 실제 유저 ID로 교체
 const MOCK_USER_ID = 1;
 const MOCK_PLATFORM = 'NODE';
+const MOCK_GENERATION_ID = 2;
 const MAX_SHAKE_COUNT = 1500;
 const MAX_SHAKES_PER_SECOND = 20;
 const MAX_CLIENT_TIME_SKEW_MS = 5000;
@@ -31,6 +43,28 @@ export class DanggnsService {
     private readonly rankingRepository: RankingRepository,
     private readonly danggnsCacheRepository: DanggnsCacheRepository,
   ) {}
+
+  async getRounds(): Promise<DanggnsRoundsResponseDto> {
+    const activity =
+      await this.danggnsRepository.findActiveGenerationByMemberId(MOCK_USER_ID);
+    if (!activity) {
+      return [];
+    }
+
+    const rounds = await this.danggnsRepository.findRecentRoundsByGenerationId(
+      MOCK_GENERATION_ID,
+      15,
+    );
+    const now = new Date();
+
+    return rounds.map((round) => ({
+      roundId: round.id,
+      roundNo: round.roundNo,
+      status: this.computeRoundStatus(now, round.startedAt, round.endedAt),
+      startedAt: round.startedAt.toISOString(),
+      endedAt: round.endedAt.toISOString(),
+    }));
+  }
 
   async handleShake(
     roundId: number,
@@ -121,6 +155,16 @@ export class DanggnsService {
     const coolAfter =
       await this.danggnsCacheRepository.getFeverCooltimeRemaining(MOCK_USER_ID);
     return { isFeverAllowed: false, remainingCooltime: coolAfter };
+  }
+
+  private computeRoundStatus(
+    now: Date,
+    startedAt: Date,
+    endedAt: Date,
+  ): RoundStatus {
+    if (now < startedAt) return 'UPCOMING';
+    if (now > endedAt) return 'ENDED';
+    return 'IN_PROGRESS';
   }
 
   private getMemberRoundKey(roundId: number) {

@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
   DanggnsFeverRequestDto,
@@ -13,6 +13,11 @@ import { DanggnsService } from './danggns.service';
 @Controller('danggns')
 export class DanggnsController {
   constructor(private readonly danggnsService: DanggnsService) {}
+
+  @Get('rounds')
+  getRounds() {
+    return this.danggnsService.getRounds();
+  }
 
   @Post('shakes')
   createShake(

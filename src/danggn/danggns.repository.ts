@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
 import * as schema from '../schema';
@@ -34,6 +34,23 @@ export class DanggnsRepository {
       roundId: input.roundId,
       memberId: input.memberId,
       scoreDelta: input.scoreDelta,
+    });
+  }
+
+  findActiveGenerationByMemberId(memberId: number) {
+    return this.db.query.memberGenerationActivities.findFirst({
+      where: and(
+        eq(schema.memberGenerationActivities.memberId, memberId),
+        eq(schema.memberGenerationActivities.status, 'ACTIVE'),
+      ),
+    });
+  }
+
+  findRecentRoundsByGenerationId(generationId: number, limit: number) {
+    return this.db.query.carrotRounds.findMany({
+      where: eq(schema.carrotRounds.generationId, generationId),
+      orderBy: (rounds, { desc }) => [desc(rounds.roundNo)],
+      limit,
     });
   }
 }
