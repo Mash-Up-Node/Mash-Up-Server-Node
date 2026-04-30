@@ -8,6 +8,13 @@
       "when": 1776967640940,
       "tag": "0000_fancy_firelord",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777487696064,
+      "tag": "0001_seminar_schedules_nullable",
+      "breakpoints": true
     }
   ]
 }
