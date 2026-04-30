@@ -5,6 +5,7 @@ import { REDIS_CLIENT } from '../redis/redis.constants';
 const LAST_SENT_AT_TTL_SECONDS = 60;
 const FEVER_REDIS_TTL_SECONDS = 7;
 const FEVER_COOLTIME_TTL_SECONDS = 10;
+const RANKING_RESTORED_TTL_SECONDS = 30;
 
 @Injectable()
 export class DanggnsCacheRepository {
@@ -20,6 +21,10 @@ export class DanggnsCacheRepository {
 
   private getLastSentAtKey(memberId: number) {
     return `danggns:member:${memberId}:lastSentAt`;
+  }
+
+  private getRankingRestoredKey(roundId: number) {
+    return `danggns:round:${roundId}:ranking:restored`;
   }
 
   async exists(memberId: number): Promise<boolean> {
@@ -61,6 +66,21 @@ export class DanggnsCacheRepository {
       '1',
       'EX',
       FEVER_COOLTIME_TTL_SECONDS,
+    );
+  }
+
+  async isRankingRestored(roundId: number): Promise<boolean> {
+    return (
+      (await this.redisClient.exists(this.getRankingRestoredKey(roundId))) === 1
+    );
+  }
+
+  async setRankingRestored(roundId: number): Promise<void> {
+    await this.redisClient.set(
+      this.getRankingRestoredKey(roundId),
+      '1',
+      'EX',
+      RANKING_RESTORED_TTL_SECONDS,
     );
   }
 }

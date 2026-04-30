@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+} from '@nestjs/common';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
   DanggnsFeverRequestDto,
@@ -17,6 +24,11 @@ export class DanggnsController {
   @Get('rounds')
   getRounds() {
     return this.danggnsService.getRounds();
+  }
+
+  @Get('rounds/:roundId')
+  getRound(@Param('roundId', ParseIntPipe) roundId: number) {
+    return this.danggnsService.getRoundData(roundId);
   }
 
   @Post('shakes')
