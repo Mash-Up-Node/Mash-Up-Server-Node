@@ -1,0 +1,34 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Lightsail
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ubuntu
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          envs: DATABASE_URL,REDIS_URL,CORS_ORIGINS
+          script: |
+            cd ~/Mash-Up-Server-Node
+            git pull origin main
+            cat > .env << EOF
+            DATABASE_URL=$DATABASE_URL
+            REDIS_URL=$REDIS_URL
+            CORS_ORIGINS=$CORS_ORIGINS
+            EOF
+            pnpm install --frozen-lockfile
+            pnpm build
+            pm2 restart mashup-server || pm2 start dist/main.js --name mashup-server
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
