@@ -3,7 +3,8 @@ import { DRIZZLE_DB } from '../db/db.constants';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../schema';
 import { and, desc, eq } from 'drizzle-orm';
-import { mashongAttendance } from '../schema';
+import { mashong, mashongAttendance } from '../schema';
+import { Platform } from '../common/type/user';
 
 @Injectable()
 export class MashongRepository {
@@ -34,5 +35,20 @@ export class MashongRepository {
       .orderBy(desc(mashongAttendance.seq))
       .limit(1)
       .then((rows) => rows[0] ?? null);
+  }
+
+  async getMashongInfo(platform: string, generationId: number) {
+    const result = await this.db
+      .select()
+      .from(mashong)
+      .where(
+        and(
+          eq(mashong.platform, Platform[platform]),
+          eq(mashong.generationId, generationId),
+        ),
+      )
+      .limit(1);
+
+    return result?.[0];
   }
 }
