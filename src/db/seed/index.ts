@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import { createDb, createPool } from '../client';
 import { seedAttendance } from './seed.attendance';
 import { seedGenerations } from './seed.generations';
+import { seedMashong } from './seed.mashong';
 import { seedMembers } from './seed.members';
 import { seedSeminars } from './seed.seminars';
 
@@ -29,6 +30,9 @@ async function run(): Promise<void> {
         seminar_items,
         seminar_sections,
         seminar_schedules,
+        mashong_attendance,
+        mashong,
+        mashong_level,
         member_generation_activities,
         member_profiles,
         members,
@@ -40,6 +44,7 @@ async function run(): Promise<void> {
     const { viewerId, memberIds } = await seedMembers(tx, { generationId });
     const { pastCheckpointIds } = await seedSeminars(tx, { generationId });
     await seedAttendance(tx, { viewerId, memberIds, pastCheckpointIds });
+    await seedMashong(tx, { generationId, viewerId });
   });
 
   // eslint-disable-next-line no-console
