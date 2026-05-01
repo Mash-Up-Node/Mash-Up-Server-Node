@@ -27,6 +27,8 @@ describe('SeminarService', () => {
             findScheduleById: jest.fn(),
             findSectionsBySchedule: jest.fn(),
             findItemsBySchedule: jest.fn(),
+            findActiveActivitiesByGeneration: jest.fn(),
+            findRecordsBySchedule: jest.fn(),
           },
         },
       ],
@@ -568,6 +570,173 @@ describe('SeminarService', () => {
       const result = await service.getDetail(10);
       expect(result.location.latitude).toBeNull();
       expect(result.location.longitude).toBeNull();
+    });
+  });
+
+  describe('getAttendancePlatforms', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('schedule이 없으면 SeminarNotFoundException', async () => {
+      repository.findScheduleById.mockResolvedValue(null);
+
+      await expect(service.getAttendancePlatforms(999)).rejects.toBeInstanceOf(
+        SeminarNotFoundException,
+      );
+    });
+
+    it('platforms는 6개 enum 모두 포함하며 멤버 0명도 빈 summary로 발행', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-05-02T20:00:00Z'));
+      repository.findScheduleById.mockResolvedValue(
+        buildSchedule({
+          id: 10,
+          generationId: 16,
+          title: '1차 정기 세미나',
+          startedAt: new Date('2026-05-02T03:00:00Z'),
+        }),
+      );
+      repository.findCheckpointsBySchedule.mockResolvedValue([
+        buildCheckpoint({
+          id: 101,
+          openedAt: new Date('2026-05-02T06:00:00Z'),
+          lateAt: new Date('2026-05-02T07:00:00Z'),
+          closedAt: new Date('2026-05-02T08:00:00Z'),
+        }),
+      ]);
+      repository.findActiveActivitiesByGeneration.mockResolvedValue([]);
+      repository.findRecordsBySchedule.mockResolvedValue([]);
+
+      const result = await service.getAttendancePlatforms(10);
+
+      expect(result.platforms.map((p) => p.platform)).toEqual([
+        'NODE',
+        'SPRING',
+        'WEB',
+        'iOS',
+        'ANDROID',
+        'DESIGN',
+      ]);
+      expect(result.platforms.every((p) => p.memberCount === 0)).toBe(true);
+      expect(result.platforms.find((p) => p.platform === 'DESIGN')!).toEqual({
+        platformId: 'product-design',
+        platform: 'DESIGN',
+        label: 'Product Design',
+        memberCount: 0,
+        summary: { total: 0, attended: 0, late: 0, absent: 0 },
+      });
+    });
+
+    it('멤버 단위 판정: 모든 ATTENDED→attended / LATE 있고 ABSENT/미체크 없음→late / ABSENT 또는 미체크 있음→absent', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-05-02T20:00:00Z'));
+      repository.findScheduleById.mockResolvedValue(
+        buildSchedule({ id: 10, generationId: 16 }),
+      );
+      const cp1 = buildCheckpoint({ id: 101, roundNo: 1 });
+      const cp2 = buildCheckpoint({ id: 102, roundNo: 2 });
+      repository.findCheckpointsBySchedule.mockResolvedValue([cp1, cp2]);
+
+      // NODE 4명: 개근 / 지각혼합 / 결석포함 / 미체크
+      repository.findActiveActivitiesByGeneration.mockResolvedValue([
+        { memberId: 1, platform: 'NODE', role: 'MEMBER' },
+        { memberId: 2, platform: 'NODE', role: 'MEMBER' },
+        { memberId: 3, platform: 'NODE', role: 'MEMBER' },
+        { memberId: 4, platform: 'NODE', role: 'MEMBER' },
+      ]);
+      repository.findRecordsBySchedule.mockResolvedValue([
+        // 1: 모두 ATTENDED → attended
+        buildRecord({
+          memberId: 1,
+          attendanceCheckpointId: 101,
+          status: 'ATTENDED',
+        }),
+        buildRecord({
+          memberId: 1,
+          attendanceCheckpointId: 102,
+          status: 'ATTENDED',
+        }),
+        // 2: ATTENDED + LATE → late
+        buildRecord({
+          memberId: 2,
+          attendanceCheckpointId: 101,
+          status: 'ATTENDED',
+        }),
+        buildRecord({
+          memberId: 2,
+          attendanceCheckpointId: 102,
+          status: 'LATE',
+        }),
+        // 3: ATTENDED + ABSENT → absent
+        buildRecord({
+          memberId: 3,
+          attendanceCheckpointId: 101,
+          status: 'ATTENDED',
+        }),
+        buildRecord({
+          memberId: 3,
+          attendanceCheckpointId: 102,
+          status: 'ABSENT',
+        }),
+        // 4: 미체크 (records 없음) → absent
+      ]);
+
+      const result = await service.getAttendancePlatforms(10);
+      const node = result.platforms.find((p) => p.platform === 'NODE')!;
+
+      expect(node.summary).toEqual({
+        total: 4,
+        attended: 1,
+        late: 1,
+        absent: 2,
+      });
+    });
+
+    it.each([
+      ['BEFORE', '2026-05-02T05:00:00Z'],
+      ['IN_PROGRESS', '2026-05-02T06:30:00Z'], // openedAt~lateAt
+      ['AGGREGATING', '2026-05-02T07:30:00Z'], // lateAt~closedAt
+      ['COMPLETED', '2026-05-02T09:00:00Z'],
+    ])('attendancePhase 4단계: %s', async (expected, nowIso) => {
+      jest.useFakeTimers().setSystemTime(new Date(nowIso));
+      repository.findScheduleById.mockResolvedValue(
+        buildSchedule({ id: 10, generationId: 16 }),
+      );
+      repository.findCheckpointsBySchedule.mockResolvedValue([
+        buildCheckpoint({
+          id: 101,
+          openedAt: new Date('2026-05-02T06:00:00Z'),
+          lateAt: new Date('2026-05-02T07:00:00Z'),
+          closedAt: new Date('2026-05-02T08:00:00Z'),
+        }),
+      ]);
+      repository.findActiveActivitiesByGeneration.mockResolvedValue([]);
+      repository.findRecordsBySchedule.mockResolvedValue([]);
+
+      const result = await service.getAttendancePlatforms(10);
+      expect(result.attendancePhase).toBe(expected);
+    });
+
+    it('banner는 phase 매핑 그대로 발행 (COMPLETED → success)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-05-02T20:00:00Z'));
+      repository.findScheduleById.mockResolvedValue(
+        buildSchedule({ id: 10, generationId: 16 }),
+      );
+      repository.findCheckpointsBySchedule.mockResolvedValue([
+        buildCheckpoint({
+          id: 101,
+          openedAt: new Date('2026-05-02T06:00:00Z'),
+          lateAt: new Date('2026-05-02T07:00:00Z'),
+          closedAt: new Date('2026-05-02T08:00:00Z'),
+        }),
+      ]);
+      repository.findActiveActivitiesByGeneration.mockResolvedValue([]);
+      repository.findRecordsBySchedule.mockResolvedValue([]);
+
+      const result = await service.getAttendancePlatforms(10);
+      expect(result.banner).toEqual({
+        tone: 'success',
+        message: '출석체크가 완료되었어요',
+      });
     });
   });
 });

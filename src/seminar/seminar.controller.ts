@@ -23,4 +23,9 @@ export class SeminarController {
   getDetail(@Param('seminarId', ParseIntPipe) seminarId: number) {
     return this.seminarService.getDetail(seminarId);
   }
+
+  @Get(':seminarId/attendance/platforms')
+  getAttendancePlatforms(@Param('seminarId', ParseIntPipe) seminarId: number) {
+    return this.seminarService.getAttendancePlatforms(seminarId);
+  }
 }

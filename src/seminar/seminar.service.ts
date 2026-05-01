@@ -6,6 +6,15 @@ import {
   getThisWeekRange,
   getWeekday,
 } from '../common/util/date';
+import {
+  BANNER_BY_PHASE,
+  PLATFORM_LABEL,
+  PLATFORM_SLUG,
+} from './attendance.constants';
+import type {
+  AttendancePhase4,
+  AttendancePlatformsResponseDto,
+} from './dto/attendance-platforms-response.dto';
 import type {
   ScheduleItem,
   SchedulesResponseDto,
@@ -24,11 +33,15 @@ import {
 } from './seminar.exception';
 import {
   SeminarRepository,
+  type ActiveActivity,
   type AttendanceCheckpoint,
+  type Platform,
   type SeminarAttendanceRecord,
   type SeminarItem,
   type SeminarSchedule,
 } from './seminar.repository';
+
+type MemberAttendanceVerdict = 'attended' | 'late' | 'absent';
 
 type ScheduleWithDate = SeminarSchedule & { startedAt: Date };
 
@@ -228,6 +241,141 @@ export class SeminarService {
             now,
           )
         : null,
+    };
+  }
+
+  /**
+   * 운영진 출석 현황 화면(4단계)용 phase 계산.
+   * - BEFORE: 첫 openedAt 전
+   * - IN_PROGRESS: 어떤 checkpoint의 openedAt~lateAt 사이 (정시 출석 가능)
+   * - AGGREGATING: 모든 IN_PROGRESS 끝났고 어떤 checkpoint의 lateAt~closedAt 사이 (지각만 가능)
+   * - COMPLETED: 마지막 closedAt 이후
+   *
+   * weekly 화면(3단계)과는 별도로 운영진 화면이 더 세밀해야 해서 분리.
+   * checkpoints가 비어있으면 BEFORE.
+   */
+  private calculateAttendancePhase4(
+    checkpoints: AttendanceCheckpoint[],
+    now: Date,
+  ): AttendancePhase4 {
+    if (checkpoints.length === 0) return 'BEFORE';
+
+    const nowMs = now.getTime();
+    const firstOpenedAt = Math.min(
+      ...checkpoints.map((c) => c.openedAt.getTime()),
+    );
+    const lastClosedAt = Math.max(
+      ...checkpoints.map((c) => c.closedAt.getTime()),
+    );
+
+    if (nowMs < firstOpenedAt) return 'BEFORE';
+    if (nowMs > lastClosedAt) return 'COMPLETED';
+
+    const isInProgress = checkpoints.some(
+      (c) => c.openedAt.getTime() <= nowMs && nowMs <= c.lateAt.getTime(),
+    );
+    if (isInProgress) return 'IN_PROGRESS';
+
+    return 'AGGREGATING';
+  }
+
+  /**
+   * 한 멤버의 records와 전체 checkpoints를 받아 멤버 단위 최종 판정.
+   * - 모든 checkpoint에 ATTENDED records → attended
+   * - LATE 있고 ABSENT/미체크 없음 → late
+   * - 그 외 (ABSENT 있거나 미체크 있음) → absent
+   */
+  private judgeMemberAttendance(
+    memberRecords: SeminarAttendanceRecord[],
+    checkpoints: AttendanceCheckpoint[],
+  ): MemberAttendanceVerdict {
+    if (checkpoints.length === 0) return 'absent';
+
+    const recordByCheckpoint = new Map(
+      memberRecords.map((r) => [r.attendanceCheckpointId, r]),
+    );
+
+    let hasLate = false;
+    for (const cp of checkpoints) {
+      const rec = recordByCheckpoint.get(cp.id);
+      if (!rec || rec.status === 'ABSENT') return 'absent';
+      if (rec.status === 'LATE') hasLate = true;
+    }
+    return hasLate ? 'late' : 'attended';
+  }
+
+  async getAttendancePlatforms(
+    seminarId: number,
+  ): Promise<AttendancePlatformsResponseDto> {
+    const schedule = await this.seminarRepository.findScheduleById(seminarId);
+    if (!schedule) {
+      throw new SeminarNotFoundException(seminarId);
+    }
+
+    const [checkpoints, activities, records] = await Promise.all([
+      this.seminarRepository.findCheckpointsBySchedule(seminarId),
+      this.seminarRepository.findActiveActivitiesByGeneration(
+        schedule.generationId,
+      ),
+      this.seminarRepository.findRecordsBySchedule(seminarId),
+    ]);
+
+    // records를 멤버별로 그룹핑
+    const recordsByMember = new Map<number, SeminarAttendanceRecord[]>();
+    for (const rec of records) {
+      const list = recordsByMember.get(rec.memberId) ?? [];
+      list.push(rec);
+      recordsByMember.set(rec.memberId, list);
+    }
+
+    // activities를 platform별로 그룹핑
+    const activitiesByPlatform = new Map<Platform, ActiveActivity[]>();
+    for (const act of activities) {
+      const list = activitiesByPlatform.get(act.platform) ?? [];
+      list.push(act);
+      activitiesByPlatform.set(act.platform, list);
+    }
+
+    // 응답 platforms 배열은 PLATFORM_SLUG의 키 순서대로 (멤버 0명인 플랫폼도 포함)
+    const platforms = (Object.keys(PLATFORM_SLUG) as Platform[]).map(
+      (platform) => {
+        const members = activitiesByPlatform.get(platform) ?? [];
+        const summary = {
+          total: members.length,
+          attended: 0,
+          late: 0,
+          absent: 0,
+        };
+        for (const m of members) {
+          const verdict = this.judgeMemberAttendance(
+            recordsByMember.get(m.memberId) ?? [],
+            checkpoints,
+          );
+          summary[verdict]++;
+        }
+        return {
+          platformId: PLATFORM_SLUG[platform],
+          platform,
+          label: PLATFORM_LABEL[platform],
+          memberCount: members.length,
+          summary,
+        };
+      },
+    );
+
+    const phase = this.calculateAttendancePhase4(checkpoints, new Date());
+
+    return {
+      seminarId: schedule.id,
+      title: schedule.title,
+      attendancePhase: phase,
+      banner: BANNER_BY_PHASE[phase],
+      checkpoints: checkpoints.map((cp) => ({
+        checkpointId: cp.id,
+        label: cp.title,
+        order: cp.roundNo,
+      })),
+      platforms,
     };
   }
 

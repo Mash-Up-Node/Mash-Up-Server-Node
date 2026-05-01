@@ -16,6 +16,15 @@ export type AttendanceCheckpoint =
   typeof schema.attendanceCheckpoints.$inferSelect;
 export type SeminarAttendanceRecord =
   typeof schema.seminarAttendanceRecords.$inferSelect;
+export type Platform = (typeof schema.platformEnum.enumValues)[number];
+export type GenerationRole =
+  (typeof schema.generationRoleEnum.enumValues)[number];
+
+export type ActiveActivity = {
+  memberId: number;
+  platform: Platform;
+  role: GenerationRole;
+};
 
 @Injectable()
 export class SeminarRepository {
@@ -160,6 +169,48 @@ export class SeminarRepository {
       .from(schema.attendanceCheckpoints)
       .where(eq(schema.attendanceCheckpoints.seminarScheduleId, scheduleId))
       .orderBy(asc(schema.attendanceCheckpoints.roundNo));
+  }
+
+  /**
+   * 활동기수의 ACTIVE 멤버와 그 platform/role 정보를 조회.
+   * 출석 현황 집계의 모집단(분모)으로 사용된다.
+   */
+  findActiveActivitiesByGeneration(
+    generationId: number,
+  ): Promise<ActiveActivity[]> {
+    return this.db
+      .select({
+        memberId: schema.memberGenerationActivities.memberId,
+        platform: schema.memberGenerationActivities.platform,
+        role: schema.memberGenerationActivities.role,
+      })
+      .from(schema.memberGenerationActivities)
+      .where(
+        and(
+          eq(schema.memberGenerationActivities.generationId, generationId),
+          eq(schema.memberGenerationActivities.status, 'ACTIVE'),
+        ),
+      );
+  }
+
+  /**
+   * schedule에 속한 모든 출석 records를 조회.
+   * records 테이블에 scheduleId가 없어 attendance_checkpoints를 거쳐 join.
+   */
+  findRecordsBySchedule(
+    scheduleId: number,
+  ): Promise<SeminarAttendanceRecord[]> {
+    return this.db
+      .select(getTableColumns(schema.seminarAttendanceRecords))
+      .from(schema.seminarAttendanceRecords)
+      .innerJoin(
+        schema.attendanceCheckpoints,
+        eq(
+          schema.seminarAttendanceRecords.attendanceCheckpointId,
+          schema.attendanceCheckpoints.id,
+        ),
+      )
+      .where(eq(schema.attendanceCheckpoints.seminarScheduleId, scheduleId));
   }
 
   findRecordsByMemberAndSchedule(
