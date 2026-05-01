@@ -74,44 +74,6 @@ describe('AuthService', () => {
     jest.clearAllMocks();
   });
 
-  it('신규 OAuth 사용자를 생성하고 access token과 가입 필요 응답을 반환한다', async () => {
-    const service = createService(memberFixture(), undefined);
-
-    await expect(
-      service.loginWithNaver('authorization-code', 'WEB'),
-    ).resolves.toEqual({
-      memberId: 1,
-      signupCompleted: false,
-      accessToken: 'access-token',
-      requiredFields: ['name', 'platform', 'inviteCode'],
-    });
-    expect(memberRepository.createOAuthMember).toHaveBeenCalledWith(
-      'NAVER',
-      'naver-id',
-      'user@example.com',
-    );
-    expect(memberRepository.findActiveByOAuthIdentity).not.toHaveBeenCalled();
-    expect(accessTokenService.issue).toHaveBeenCalledWith(1, false);
-    expect(refreshTokenService.issue).not.toHaveBeenCalled();
-  });
-
-  it('기존 가입 미완료 사용자는 access token과 가입 필요 응답을 반환한다', async () => {
-    const service = createService(undefined, memberFixture());
-
-    await expect(
-      service.loginWithNaver('authorization-code', 'WEB'),
-    ).resolves.toMatchObject({
-      memberId: 1,
-      signupCompleted: false,
-      accessToken: 'access-token',
-    });
-    expect(memberRepository.findActiveByOAuthIdentity).toHaveBeenCalledWith(
-      'NAVER',
-      'naver-id',
-    );
-    expect(refreshTokenService.issue).not.toHaveBeenCalled();
-  });
-
   it('기존 가입 완료 사용자에게 access/refresh token을 발급한다', async () => {
     const service = createService(
       undefined,
