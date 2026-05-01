@@ -27,6 +27,7 @@ jobs:
             EOF
             pnpm install --frozen-lockfile
             pnpm build
+            pnpm db:migrate
             pm2 restart mashup-server || pm2 start dist/main.js --name mashup-server
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
