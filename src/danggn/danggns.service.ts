@@ -46,12 +46,12 @@ export type DanggnsRoundResponseDto = {
 // TODO: 인증 구현 후 토큰에서 추출한 실제 유저 ID로 교체
 const MOCK_USER_ID = 1;
 const MOCK_PLATFORM = 'NODE';
-const MOCK_GENERATION_ID = 2;
+const MOCK_GENERATION_ID = 1;
 const MAX_SHAKE_COUNT = 1500;
 const MAX_SHAKES_PER_SECOND = 20;
 const MAX_CLIENT_TIME_SKEW_MS = 5000;
 const FEVER_MULTIPLIER = 10;
-const FEVER_PROBABILITY = 0.1;
+const FEVER_PROBABILITY = 0.8;
 
 @Injectable()
 export class DanggnsService {
