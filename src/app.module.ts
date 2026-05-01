@@ -4,9 +4,10 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { DbModule } from './db/db.module';
 import { RedisModule } from './redis/redis.module';
+import { MashongModule } from './mashong/mashong.module';
 
 @Module({
-  imports: [DbModule, RedisModule, AuthModule],
+  imports: [DbModule, RedisModule, AuthModule, MashongModule],
   controllers: [AppController],
   providers: [AppService],
 })
