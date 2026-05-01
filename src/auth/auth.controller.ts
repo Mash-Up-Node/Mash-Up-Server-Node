@@ -121,6 +121,7 @@ export class AuthController {
   ) {
     const result = await this.authService.loginWithNaver(
       body.authorizationCode,
+      body.state,
       body.authClient,
     );
 

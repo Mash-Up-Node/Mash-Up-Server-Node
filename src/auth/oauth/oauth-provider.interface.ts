@@ -10,5 +10,8 @@ export interface OAuthUserProfile {
 
 export interface OAuthProvider {
   readonly providerName: OAuthProviderName;
-  getProfile(authorizationCode: string): Promise<OAuthUserProfile>;
+  getProfile(
+    authorizationCode: string,
+    state: string,
+  ): Promise<OAuthUserProfile>;
 }

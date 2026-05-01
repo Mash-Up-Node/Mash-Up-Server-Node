@@ -27,21 +27,32 @@ export class NaverOAuthService implements OAuthProvider {
   private readonly logger = new Logger(NaverOAuthService.name);
   private readonly clientId: string;
   private readonly clientSecret: string;
+  private readonly webRedirectUri: string;
 
   constructor() {
     const clientId = process.env.NAVER_CLIENT_ID;
     const clientSecret = process.env.NAVER_CLIENT_SECRET;
+    const webRedirectUri = process.env.NAVER_WEB_REDIRECT_URI;
 
-    if (!clientId || !clientSecret) {
-      throw new Error('NAVER_CLIENT_ID and NAVER_CLIENT_SECRET are required.');
+    if (!clientId || !clientSecret || !webRedirectUri) {
+      throw new Error(
+        'NAVER_CLIENT_ID, NAVER_CLIENT_SECRET and NAVER_WEB_REDIRECT_URI are required.',
+      );
     }
 
     this.clientId = clientId;
     this.clientSecret = clientSecret;
+    this.webRedirectUri = webRedirectUri;
   }
 
-  async getProfile(authorizationCode: string): Promise<OAuthUserProfile> {
-    const naverAccessToken = await this.exchangeAccessToken(authorizationCode);
+  async getProfile(
+    authorizationCode: string,
+    state: string,
+  ): Promise<OAuthUserProfile> {
+    const naverAccessToken = await this.exchangeAccessToken(
+      authorizationCode,
+      state,
+    );
     const profile = await this.fetchProfile(naverAccessToken);
     const providerUserId = profile.response?.id;
 
@@ -59,12 +70,15 @@ export class NaverOAuthService implements OAuthProvider {
 
   private async exchangeAccessToken(
     authorizationCode: string,
+    state: string,
   ): Promise<string> {
     const params = new URLSearchParams({
       grant_type: 'authorization_code',
       client_id: this.clientId,
       client_secret: this.clientSecret,
+      redirect_uri: this.webRedirectUri,
       code: authorizationCode,
+      state,
     });
 
     const response = await this.fetchOrFail(
@@ -81,7 +95,7 @@ export class NaverOAuthService implements OAuthProvider {
 
     if (!body.access_token || body.error) {
       this.logger.warn(
-        `Naver token API returned invalid body: error=${body.error ?? 'missing_access_token'}`,
+        `Naver token API returned invalid body: ${JSON.stringify(body)}`,
       );
       throw new NaverAuthFailedException();
     }
