@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ActiveGenerationNotFoundException } from './seminar.exception';
+import {
+  ActiveGenerationNotFoundException,
+  SeminarNotFoundException,
+} from './seminar.exception';
 import { SeminarRepository } from './seminar.repository';
 import { SeminarService } from './seminar.service';
 
@@ -21,6 +24,9 @@ describe('SeminarService', () => {
             findNextScheduleStartedAt: jest.fn(),
             findCheckpointsBySchedule: jest.fn(),
             findRecordsByMemberAndSchedule: jest.fn(),
+            findScheduleById: jest.fn(),
+            findSectionsBySchedule: jest.fn(),
+            findItemsBySchedule: jest.fn(),
           },
         },
       ],
@@ -364,6 +370,206 @@ describe('SeminarService', () => {
       expect(result.thisWeekSeminar?.attendance.phase).toBe(expected);
     });
   });
+
+  describe('getDetail', () => {
+    beforeEach(() => {
+      // KST 2026-05-02(토) 12:00 = UTC 03:00 — checkpoint #2 (10~12 UTC)는 닫힘, #3 진행 중 가정용
+      jest.useFakeTimers().setSystemTime(new Date('2026-05-02T11:00:00.000Z'));
+      // 기본은 빈 sections / items / checkpoints
+      repository.findSectionsBySchedule.mockResolvedValue([]);
+      repository.findItemsBySchedule.mockResolvedValue([]);
+      repository.findCheckpointsBySchedule.mockResolvedValue([]);
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('schedule이 없으면 SeminarNotFoundException', async () => {
+      repository.findScheduleById.mockResolvedValue(null);
+
+      await expect(service.getDetail(999)).rejects.toBeInstanceOf(
+        SeminarNotFoundException,
+      );
+    });
+
+    it('schedule.startedAt이 null이면 SeminarNotFoundException (정보 미정 일정 차단)', async () => {
+      repository.findScheduleById.mockResolvedValue(
+        buildSchedule({ id: 10, startedAt: null }),
+      );
+
+      await expect(service.getDetail(10)).rejects.toBeInstanceOf(
+        SeminarNotFoundException,
+      );
+    });
+
+    it('schedule + sections + items를 매핑하여 응답을 구성한다', async () => {
+      repository.findScheduleById.mockResolvedValue(
+        buildSchedule({
+          id: 10,
+          title: '1차 정기 세미나',
+          startedAt: new Date('2026-05-02T03:00:00Z'),
+          endedAt: new Date('2026-05-02T07:00:00Z'),
+          venueName: '강남',
+          venueAddress: '서울시 강남구',
+          venueLat: '37.498095',
+          venueLng: '127.027610',
+          notice: '공지사항',
+        }),
+      );
+      repository.findSectionsBySchedule.mockResolvedValue([
+        buildSection({
+          id: 1,
+          seminarScheduleId: 10,
+          sortOrder: 1,
+          title: 'OT',
+          startedAt: new Date('2026-05-02T03:00:00Z'),
+          endedAt: new Date('2026-05-02T04:00:00Z'),
+        }),
+        buildSection({
+          id: 2,
+          seminarScheduleId: 10,
+          sortOrder: 2,
+          title: '세미나 발표',
+          startedAt: new Date('2026-05-02T04:00:00Z'),
+          endedAt: new Date('2026-05-02T07:00:00Z'),
+        }),
+      ]);
+      repository.findItemsBySchedule.mockResolvedValue([
+        buildItem({
+          id: 11,
+          seminarSectionId: 1,
+          sortOrder: 1,
+          title: '환영사',
+          description: null,
+          startedAt: new Date('2026-05-02T03:00:00Z'),
+        }),
+        buildItem({
+          id: 12,
+          seminarSectionId: 1,
+          sortOrder: 2,
+          title: '조 발표',
+          startedAt: new Date('2026-05-02T03:30:00Z'),
+        }),
+        buildItem({
+          id: 21,
+          seminarSectionId: 2,
+          sortOrder: 1,
+          title: 'Node 1번',
+          description: '발표 설명',
+          startedAt: new Date('2026-05-02T04:00:00Z'),
+        }),
+      ]);
+
+      const result = await service.getDetail(10);
+
+      expect(result).toEqual({
+        seminarId: 10,
+        title: '1차 정기 세미나',
+        date: '2026-05-02',
+        startsAt: '2026-05-02T03:00:00.000Z',
+        endsAt: '2026-05-02T07:00:00.000Z',
+        location: {
+          name: '강남',
+          address: '서울시 강남구',
+          latitude: 37.498095,
+          longitude: 127.02761,
+          mapImageUrl: null,
+        },
+        notice: '공지사항',
+        programSections: [
+          {
+            sectionNo: 1,
+            title: 'OT',
+            startsAt: '2026-05-02T03:00:00.000Z',
+            endsAt: '2026-05-02T04:00:00.000Z',
+            items: [
+              {
+                order: 1,
+                title: '환영사',
+                description: null,
+                startsAt: '2026-05-02T03:00:00.000Z',
+              },
+              {
+                order: 2,
+                title: '조 발표',
+                description: null,
+                startsAt: '2026-05-02T03:30:00.000Z',
+              },
+            ],
+          },
+          {
+            sectionNo: 2,
+            title: '세미나 발표',
+            startsAt: '2026-05-02T04:00:00.000Z',
+            endsAt: '2026-05-02T07:00:00.000Z',
+            items: [
+              {
+                order: 1,
+                title: 'Node 1번',
+                description: '발표 설명',
+                startsAt: '2026-05-02T04:00:00.000Z',
+              },
+            ],
+          },
+        ],
+        attendanceAvailable: false,
+      });
+    });
+
+    it('checkpoint 중 openedAt~closedAt 사이에 now가 있으면 attendanceAvailable=true', async () => {
+      repository.findScheduleById.mockResolvedValue(
+        buildSchedule({
+          id: 10,
+          startedAt: new Date('2026-05-02T03:00:00Z'),
+        }),
+      );
+      repository.findCheckpointsBySchedule.mockResolvedValue([
+        buildCheckpoint({
+          id: 101,
+          openedAt: new Date('2026-05-02T10:00:00Z'),
+          closedAt: new Date('2026-05-02T12:00:00Z'),
+        }),
+      ]);
+
+      const result = await service.getDetail(10);
+      expect(result.attendanceAvailable).toBe(true);
+    });
+
+    it('모든 checkpoint가 닫혀 있으면 attendanceAvailable=false', async () => {
+      repository.findScheduleById.mockResolvedValue(
+        buildSchedule({
+          id: 10,
+          startedAt: new Date('2026-05-02T03:00:00Z'),
+        }),
+      );
+      repository.findCheckpointsBySchedule.mockResolvedValue([
+        buildCheckpoint({
+          id: 101,
+          openedAt: new Date('2026-05-02T06:00:00Z'),
+          closedAt: new Date('2026-05-02T08:00:00Z'),
+        }),
+      ]);
+
+      const result = await service.getDetail(10);
+      expect(result.attendanceAvailable).toBe(false);
+    });
+
+    it('venueLat/Lng이 null이면 latitude/longitude도 null', async () => {
+      repository.findScheduleById.mockResolvedValue(
+        buildSchedule({
+          id: 10,
+          startedAt: new Date('2026-05-02T03:00:00Z'),
+          venueLat: null,
+          venueLng: null,
+        }),
+      );
+
+      const result = await service.getDetail(10);
+      expect(result.location.latitude).toBeNull();
+      expect(result.location.longitude).toBeNull();
+    });
+  });
 });
 
 function buildSchedule(
@@ -385,6 +591,46 @@ function baseSchedule() {
     venueLat: null as string | null,
     venueLng: null as string | null,
     notice: null as string | null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
+
+function buildSection(
+  overrides: Partial<ReturnType<typeof baseSection>>,
+): ReturnType<typeof baseSection> {
+  return { ...baseSection(), ...overrides };
+}
+
+function baseSection() {
+  return {
+    id: 1,
+    seminarScheduleId: 10,
+    title: 'Section',
+    description: null as string | null,
+    startedAt: null as Date | null,
+    endedAt: null as Date | null,
+    sortOrder: 1,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
+
+function buildItem(
+  overrides: Partial<ReturnType<typeof baseItem>>,
+): ReturnType<typeof baseItem> {
+  return { ...baseItem(), ...overrides };
+}
+
+function baseItem() {
+  return {
+    id: 1,
+    seminarSectionId: 1,
+    title: 'Item',
+    description: null as string | null,
+    startedAt: null as Date | null,
+    endedAt: null as Date | null,
+    sortOrder: 1,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

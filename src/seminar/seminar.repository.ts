@@ -10,6 +10,8 @@ export type ActiveGeneration = {
 };
 
 export type SeminarSchedule = typeof schema.seminarSchedules.$inferSelect;
+export type SeminarSection = typeof schema.seminarSections.$inferSelect;
+export type SeminarItem = typeof schema.seminarItems.$inferSelect;
 export type AttendanceCheckpoint =
   typeof schema.attendanceCheckpoints.$inferSelect;
 export type SeminarAttendanceRecord =
@@ -114,6 +116,40 @@ export class SeminarRepository {
       .limit(1);
 
     return row?.startedAt ?? null;
+  }
+
+  async findScheduleById(id: number): Promise<SeminarSchedule | null> {
+    const [row] = await this.db
+      .select()
+      .from(schema.seminarSchedules)
+      .where(eq(schema.seminarSchedules.id, id))
+      .limit(1);
+
+    return row ?? null;
+  }
+
+  findSectionsBySchedule(scheduleId: number): Promise<SeminarSection[]> {
+    return this.db
+      .select()
+      .from(schema.seminarSections)
+      .where(eq(schema.seminarSections.seminarScheduleId, scheduleId))
+      .orderBy(asc(schema.seminarSections.sortOrder));
+  }
+
+  /**
+   * 한 schedule에 속한 모든 program items를 sortOrder 순으로 조회.
+   * items 테이블엔 scheduleId가 없어 sections를 거쳐 join.
+   */
+  findItemsBySchedule(scheduleId: number): Promise<SeminarItem[]> {
+    return this.db
+      .select(getTableColumns(schema.seminarItems))
+      .from(schema.seminarItems)
+      .innerJoin(
+        schema.seminarSections,
+        eq(schema.seminarItems.seminarSectionId, schema.seminarSections.id),
+      )
+      .where(eq(schema.seminarSections.seminarScheduleId, scheduleId))
+      .orderBy(asc(schema.seminarItems.sortOrder));
   }
 
   findCheckpointsBySchedule(

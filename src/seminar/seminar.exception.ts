@@ -10,3 +10,13 @@ export class ActiveGenerationNotFoundException extends BaseException {
     );
   }
 }
+
+export class SeminarNotFoundException extends BaseException {
+  constructor(seminarId: number) {
+    super(
+      HttpStatus.NOT_FOUND,
+      'SEMINAR_NOT_FOUND',
+      `세미나(id=${seminarId})를 찾을 수 없습니다.`,
+    );
+  }
+}

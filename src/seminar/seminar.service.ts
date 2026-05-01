@@ -10,6 +10,7 @@ import type {
   ScheduleItem,
   SchedulesResponseDto,
 } from './dto/schedules-response.dto';
+import type { SeminarDetailResponseDto } from './dto/seminar-detail-response.dto';
 import type {
   Attendance,
   AttendancePhase,
@@ -17,11 +18,15 @@ import type {
   ThisWeekResponseDto,
   ThisWeekSeminar,
 } from './dto/this-week-response.dto';
-import { ActiveGenerationNotFoundException } from './seminar.exception';
+import {
+  ActiveGenerationNotFoundException,
+  SeminarNotFoundException,
+} from './seminar.exception';
 import {
   SeminarRepository,
   type AttendanceCheckpoint,
   type SeminarAttendanceRecord,
+  type SeminarItem,
   type SeminarSchedule,
 } from './seminar.repository';
 
@@ -226,8 +231,63 @@ export class SeminarService {
     };
   }
 
-  // TODO(seminar): 후속 커밋에서 구현
-  async getDetail(seminarId: number) {
-    return { seminarId };
+  async getDetail(seminarId: number): Promise<SeminarDetailResponseDto> {
+    const [schedule, sections, items, checkpoints] = await Promise.all([
+      this.seminarRepository.findScheduleById(seminarId),
+      this.seminarRepository.findSectionsBySchedule(seminarId),
+      this.seminarRepository.findItemsBySchedule(seminarId),
+      this.seminarRepository.findCheckpointsBySchedule(seminarId),
+    ]);
+
+    // 운영 정책상 detail 응답은 startedAt 있는 schedule만 노출
+    if (!schedule || schedule.startedAt === null) {
+      throw new SeminarNotFoundException(seminarId);
+    }
+
+    const itemsBySection = new Map<number, SeminarItem[]>();
+    for (const item of items) {
+      const list = itemsBySection.get(item.seminarSectionId) ?? [];
+      list.push(item);
+      itemsBySection.set(item.seminarSectionId, list);
+    }
+
+    const programSections = sections.map((section) => ({
+      sectionNo: section.sortOrder,
+      title: section.title,
+      startsAt: section.startedAt?.toISOString() ?? null,
+      endsAt: section.endedAt?.toISOString() ?? null,
+      items: (itemsBySection.get(section.id) ?? []).map((item) => ({
+        order: item.sortOrder,
+        title: item.title,
+        description: item.description,
+        startsAt: item.startedAt?.toISOString() ?? null,
+      })),
+    }));
+
+    const now = new Date();
+    const attendanceAvailable = checkpoints.some(
+      (cp) => cp.openedAt <= now && now <= cp.closedAt,
+    );
+
+    return {
+      seminarId: schedule.id,
+      title: schedule.title,
+      date: format(
+        toZonedTime(schedule.startedAt, DEFAULT_TIMEZONE),
+        'yyyy-MM-dd',
+      ),
+      startsAt: schedule.startedAt.toISOString(),
+      endsAt: schedule.endedAt?.toISOString() ?? null,
+      location: {
+        name: schedule.venueName,
+        address: schedule.venueAddress,
+        latitude: schedule.venueLat ? parseFloat(schedule.venueLat) : null,
+        longitude: schedule.venueLng ? parseFloat(schedule.venueLng) : null,
+        mapImageUrl: null,
+      },
+      notice: schedule.notice,
+      programSections,
+      attendanceAvailable,
+    };
   }
 }
