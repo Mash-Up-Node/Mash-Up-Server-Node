@@ -4,6 +4,7 @@ export type OAuthProviderName = (typeof oauthProviderEnum.enumValues)[number];
 
 export interface OAuthUserProfile {
   providerUserId: string;
+  name?: string;
   email?: string;
 }
 

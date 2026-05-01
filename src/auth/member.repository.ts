@@ -3,9 +3,11 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DRIZZLE_DB } from '../db/db.constants';
 import * as schema from '../schema';
-import { members } from '../schema';
+import { generations, memberGenerationActivities, members } from '../schema';
 import { Member } from './auth.types';
 import { OAuthProviderName } from './oauth/oauth-provider.interface';
+
+const DEMO_GENERATION_NUMBER = 16;
 
 @Injectable()
 export class MemberRepository {
@@ -17,20 +19,45 @@ export class MemberRepository {
   async createOAuthMember(
     providerName: OAuthProviderName,
     providerUserId: string,
+    name?: string,
     email?: string,
   ): Promise<Member | undefined> {
-    const [createdMember] = await this.db
-      .insert(members)
-      .values({
-        oauthProvider: providerName,
-        oauthProviderUserId: providerUserId,
-        email,
-        signupCompleted: true,
-      })
-      .onConflictDoNothing()
-      .returning();
+    return this.db.transaction(async (tx) => {
+      const [createdMember] = await tx
+        .insert(members)
+        .values({
+          oauthProvider: providerName,
+          oauthProviderUserId: providerUserId,
+          name,
+          email,
+          signupCompleted: true,
+        })
+        .onConflictDoNothing()
+        .returning();
 
-    return createdMember;
+      if (!createdMember) {
+        return undefined;
+      }
+
+      const [generation] = await tx
+        .select()
+        .from(generations)
+        .where(eq(generations.number, DEMO_GENERATION_NUMBER))
+        .limit(1);
+
+      if (generation) {
+        await tx.insert(memberGenerationActivities).values({
+          memberId: createdMember.id,
+          generationId: generation.id,
+          platform: 'NODE',
+          role: 'MEMBER',
+          status: 'ACTIVE',
+          joinedAt: new Date(),
+        });
+      }
+
+      return createdMember;
+    });
   }
 
   async findActiveByOAuthIdentity(

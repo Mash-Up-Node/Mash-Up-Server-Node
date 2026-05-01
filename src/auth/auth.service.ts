@@ -88,6 +88,7 @@ export class AuthService {
     const createdMember = await this.memberRepository.createOAuthMember(
       providerName,
       profile.providerUserId,
+      profile.name,
       profile.email,
     );
 

@@ -11,6 +11,7 @@ type NaverProfileResponse = {
   resultcode?: string;
   response?: {
     id?: string;
+    name?: string;
     email?: string;
   };
 };
@@ -51,6 +52,7 @@ export class NaverOAuthService implements OAuthProvider {
 
     return {
       providerUserId,
+      name: profile.response?.name,
       email: profile.response?.email,
     };
   }
