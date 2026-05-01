@@ -3,7 +3,11 @@ import {
   ActiveGenerationNotFoundException,
   SeminarNotFoundException,
 } from './seminar.exception';
-import { SeminarRepository } from './seminar.repository';
+import {
+  SeminarRepository,
+  type Member,
+  type MemberProfile,
+} from './seminar.repository';
 import { SeminarService } from './seminar.service';
 
 describe('SeminarService', () => {
@@ -29,6 +33,10 @@ describe('SeminarService', () => {
             findItemsBySchedule: jest.fn(),
             findActiveActivitiesByGeneration: jest.fn(),
             findRecordsBySchedule: jest.fn(),
+            findGenerationById: jest.fn(),
+            findMembersByIds: jest.fn(),
+            findProfilesByMemberIds: jest.fn(),
+            findAttendanceScoresByMemberIds: jest.fn(),
           },
         },
       ],
@@ -739,6 +747,150 @@ describe('SeminarService', () => {
       });
     });
   });
+
+  describe('getAttendancePlatformMembers', () => {
+    it('잘못된 platformId slug면 SeminarNotFoundException', async () => {
+      await expect(
+        service.getAttendancePlatformMembers(10, 'invalid-slug'),
+      ).rejects.toBeInstanceOf(SeminarNotFoundException);
+    });
+
+    it('schedule이 없으면 SeminarNotFoundException', async () => {
+      repository.findScheduleById.mockResolvedValue(null);
+
+      await expect(
+        service.getAttendancePlatformMembers(10, 'node'),
+      ).rejects.toBeInstanceOf(SeminarNotFoundException);
+    });
+
+    it('해당 platform의 ACTIVE 멤버만 추려 응답을 구성한다', async () => {
+      repository.findScheduleById.mockResolvedValue(
+        buildSchedule({ id: 10, generationId: 16 }),
+      );
+      repository.findGenerationById.mockResolvedValue({ id: 16, number: 16 });
+      repository.findCheckpointsBySchedule.mockResolvedValue([
+        buildCheckpoint({ id: 101, roundNo: 1, title: '1부' }),
+        buildCheckpoint({ id: 102, roundNo: 2, title: '2부' }),
+      ]);
+      // NODE 2명 + SPRING 1명 (필터로 NODE만 남아야)
+      repository.findActiveActivitiesByGeneration.mockResolvedValue([
+        { memberId: 1, platform: 'NODE', role: 'MEMBER' },
+        { memberId: 2, platform: 'NODE', role: 'LEADER' },
+        { memberId: 3, platform: 'SPRING', role: 'MEMBER' },
+      ]);
+      repository.findMembersByIds.mockResolvedValue([
+        buildMember({ id: 1, name: '김매숑' }),
+        buildMember({ id: 2, name: '노드리더' }),
+      ]);
+      repository.findProfilesByMemberIds.mockResolvedValue([
+        buildProfile({
+          memberId: 1,
+          birthDate: '1996-03-05',
+          jobTitle: 'Backend Engineer',
+          githubUrl: 'https://github.com/example',
+        }),
+      ]);
+      repository.findAttendanceScoresByMemberIds.mockResolvedValue(
+        new Map([
+          [1, 25],
+          [2, 30],
+        ]),
+      );
+      repository.findRecordsBySchedule.mockResolvedValue([
+        buildRecord({
+          memberId: 1,
+          attendanceCheckpointId: 101,
+          status: 'ATTENDED',
+          checkedAt: new Date('2026-05-02T03:30:00Z'),
+        }),
+        buildRecord({
+          memberId: 1,
+          attendanceCheckpointId: 102,
+          status: 'LATE',
+          checkedAt: new Date('2026-05-02T05:30:00Z'),
+        }),
+        // 멤버 2 records 없음 → 모두 PENDING fallback
+        // 멤버 3 (SPRING) records 있어도 응답엔 안 들어와야
+        buildRecord({
+          memberId: 3,
+          attendanceCheckpointId: 101,
+          status: 'ATTENDED',
+        }),
+      ]);
+
+      const result = await service.getAttendancePlatformMembers(10, 'node');
+
+      expect(result.platform).toBe('NODE');
+      expect(result.label).toBe('Node');
+      expect(result.memberCount).toBe(2);
+      expect(result.members).toHaveLength(2);
+
+      const m1 = result.members.find((m) => m.memberId === 1)!;
+      expect(m1.name).toBe('김매숑');
+      expect(m1.profile).toEqual({
+        birthday: '1996-03-05',
+        jobTitle: 'Backend Engineer',
+        company: null,
+        bio: null,
+        socialLinks: { github: 'https://github.com/example' },
+        activityScore: 25,
+      });
+      expect(m1.activityCard).toEqual({
+        generationNumber: 16,
+        platform: 'NODE',
+        role: 'MEMBER',
+        status: 'ACTIVE',
+      });
+      expect(m1.records).toEqual([
+        {
+          checkpointId: 101,
+          label: '1부',
+          status: 'ATTENDED',
+          checkedAt: '2026-05-02T03:30:00.000Z',
+        },
+        {
+          checkpointId: 102,
+          label: '2부',
+          status: 'LATE',
+          checkedAt: '2026-05-02T05:30:00.000Z',
+        },
+      ]);
+
+      const m2 = result.members.find((m) => m.memberId === 2)!;
+      // profile 없음 → 모두 null + 빈 socialLinks
+      expect(m2.profile).toEqual({
+        birthday: null,
+        jobTitle: null,
+        company: null,
+        bio: null,
+        socialLinks: {},
+        activityScore: 30,
+      });
+      // records 없음 → 모두 PENDING
+      expect(m2.records.every((r) => r.status === 'PENDING')).toBe(true);
+      expect(m2.records.every((r) => r.checkedAt === null)).toBe(true);
+    });
+
+    it('해당 platform에 멤버가 없으면 members는 빈 배열', async () => {
+      repository.findScheduleById.mockResolvedValue(
+        buildSchedule({ id: 10, generationId: 16 }),
+      );
+      repository.findGenerationById.mockResolvedValue({ id: 16, number: 16 });
+      repository.findCheckpointsBySchedule.mockResolvedValue([]);
+      repository.findActiveActivitiesByGeneration.mockResolvedValue([
+        { memberId: 1, platform: 'NODE', role: 'MEMBER' },
+      ]);
+      repository.findMembersByIds.mockResolvedValue([]);
+      repository.findProfilesByMemberIds.mockResolvedValue([]);
+      repository.findAttendanceScoresByMemberIds.mockResolvedValue(new Map());
+      repository.findRecordsBySchedule.mockResolvedValue([]);
+
+      const result = await service.getAttendancePlatformMembers(10, 'ios');
+      expect(result.platform).toBe('iOS');
+      expect(result.memberCount).toBe(0);
+      expect(result.members).toEqual([]);
+    });
+  });
 });
 
 function buildSchedule(
@@ -762,6 +914,40 @@ function baseSchedule() {
     notice: null as string | null,
     createdAt: new Date(),
     updatedAt: new Date(),
+  };
+}
+
+function buildMember(overrides: Partial<Member>): Member {
+  return {
+    id: 1,
+    oauthProvider: 'NAVER',
+    oauthProviderUserId: 'naver-1',
+    email: 'test@example.com',
+    name: 'Test',
+    signupCompleted: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+    ...overrides,
+  };
+}
+
+function buildProfile(overrides: Partial<MemberProfile>): MemberProfile {
+  return {
+    memberId: 1,
+    birthDate: null,
+    jobTitle: null,
+    company: null,
+    bio: null,
+    region: null,
+    instagramUrl: null,
+    githubUrl: null,
+    behanceUrl: null,
+    linkedinUrl: null,
+    tistoryUrl: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
   };
 }
 

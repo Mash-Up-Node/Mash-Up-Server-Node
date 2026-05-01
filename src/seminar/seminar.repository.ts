@@ -1,5 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, getTableColumns, gte, lt } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  eq,
+  getTableColumns,
+  gte,
+  inArray,
+  lt,
+  sum,
+} from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DRIZZLE_DB } from '../db/db.constants';
 import * as schema from '../schema';
@@ -25,6 +34,9 @@ export type ActiveActivity = {
   platform: Platform;
   role: GenerationRole;
 };
+
+export type MemberProfile = typeof schema.memberProfiles.$inferSelect;
+export type Member = typeof schema.members.$inferSelect;
 
 @Injectable()
 export class SeminarRepository {
@@ -169,6 +181,55 @@ export class SeminarRepository {
       .from(schema.attendanceCheckpoints)
       .where(eq(schema.attendanceCheckpoints.seminarScheduleId, scheduleId))
       .orderBy(asc(schema.attendanceCheckpoints.roundNo));
+  }
+
+  async findGenerationById(id: number): Promise<ActiveGeneration | null> {
+    const [row] = await this.db
+      .select({
+        id: schema.generations.id,
+        number: schema.generations.number,
+      })
+      .from(schema.generations)
+      .where(eq(schema.generations.id, id))
+      .limit(1);
+
+    return row ?? null;
+  }
+
+  findMembersByIds(memberIds: number[]): Promise<Member[]> {
+    if (memberIds.length === 0) return Promise.resolve([]);
+    return this.db
+      .select()
+      .from(schema.members)
+      .where(inArray(schema.members.id, memberIds));
+  }
+
+  findProfilesByMemberIds(memberIds: number[]): Promise<MemberProfile[]> {
+    if (memberIds.length === 0) return Promise.resolve([]);
+    return this.db
+      .select()
+      .from(schema.memberProfiles)
+      .where(inArray(schema.memberProfiles.memberId, memberIds));
+  }
+
+  /**
+   * 멤버별 출석 점수 합계 (전체 records 기준).
+   * scoreDelta는 numeric이라 drizzle의 sum이 string을 반환하므로 Number 변환.
+   */
+  async findAttendanceScoresByMemberIds(
+    memberIds: number[],
+  ): Promise<Map<number, number>> {
+    if (memberIds.length === 0) return new Map();
+    const rows = await this.db
+      .select({
+        memberId: schema.seminarAttendanceRecords.memberId,
+        score: sum(schema.seminarAttendanceRecords.scoreDelta).mapWith(Number),
+      })
+      .from(schema.seminarAttendanceRecords)
+      .where(inArray(schema.seminarAttendanceRecords.memberId, memberIds))
+      .groupBy(schema.seminarAttendanceRecords.memberId);
+
+    return new Map(rows.map((r) => [r.memberId, r.score ?? 0]));
   }
 
   /**

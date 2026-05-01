@@ -10,7 +10,9 @@ import {
   BANNER_BY_PHASE,
   PLATFORM_LABEL,
   PLATFORM_SLUG,
+  slugToPlatform,
 } from './attendance.constants';
+import type { AttendancePlatformMembersResponseDto } from './dto/attendance-platform-members-response.dto';
 import type {
   AttendancePhase4,
   AttendancePlatformsResponseDto,
@@ -35,6 +37,7 @@ import {
   SeminarRepository,
   type ActiveActivity,
   type AttendanceCheckpoint,
+  type MemberProfile,
   type Platform,
   type SeminarAttendanceRecord,
   type SeminarItem,
@@ -376,6 +379,129 @@ export class SeminarService {
         order: cp.roundNo,
       })),
       platforms,
+    };
+  }
+
+  private toMemberProfileDto(
+    profile: MemberProfile | undefined,
+    activityScore: number,
+  ): AttendancePlatformMembersResponseDto['members'][number]['profile'] {
+    const socialLinks: Record<string, string> = {};
+    if (profile?.instagramUrl) socialLinks.instagram = profile.instagramUrl;
+    if (profile?.githubUrl) socialLinks.github = profile.githubUrl;
+    if (profile?.behanceUrl) socialLinks.behance = profile.behanceUrl;
+    if (profile?.linkedinUrl) socialLinks.linkedin = profile.linkedinUrl;
+    if (profile?.tistoryUrl) socialLinks.tistory = profile.tistoryUrl;
+
+    return {
+      birthday: profile?.birthDate ?? null,
+      jobTitle: profile?.jobTitle ?? null,
+      company: profile?.company ?? null,
+      bio: profile?.bio ?? null,
+      socialLinks,
+      activityScore,
+    };
+  }
+
+  async getAttendancePlatformMembers(
+    seminarId: number,
+    platformId: string,
+  ): Promise<AttendancePlatformMembersResponseDto> {
+    const platform = slugToPlatform(platformId);
+    if (!platform) {
+      throw new SeminarNotFoundException(seminarId);
+    }
+
+    const schedule = await this.seminarRepository.findScheduleById(seminarId);
+    if (!schedule) {
+      throw new SeminarNotFoundException(seminarId);
+    }
+
+    const [generation, checkpoints, activities, allRecords] = await Promise.all(
+      [
+        this.seminarRepository.findGenerationById(schedule.generationId),
+        this.seminarRepository.findCheckpointsBySchedule(seminarId),
+        this.seminarRepository.findActiveActivitiesByGeneration(
+          schedule.generationId,
+        ),
+        this.seminarRepository.findRecordsBySchedule(seminarId),
+      ],
+    );
+
+    if (!generation) {
+      // schedule이 존재하면 generation이 존재해야 정상 (FK)
+      throw new SeminarNotFoundException(seminarId);
+    }
+
+    const platformActivities = activities.filter(
+      (a) => a.platform === platform,
+    );
+    const memberIds = platformActivities.map((a) => a.memberId);
+
+    const [members, profiles, scoresByMember] = await Promise.all([
+      this.seminarRepository.findMembersByIds(memberIds),
+      this.seminarRepository.findProfilesByMemberIds(memberIds),
+      this.seminarRepository.findAttendanceScoresByMemberIds(memberIds),
+    ]);
+
+    const membersById = new Map(members.map((m) => [m.id, m]));
+    const profilesByMember = new Map(profiles.map((p) => [p.memberId, p]));
+
+    const memberIdSet = new Set(memberIds);
+    const recordsByMember = new Map<number, SeminarAttendanceRecord[]>();
+    for (const rec of allRecords) {
+      if (!memberIdSet.has(rec.memberId)) continue;
+      const list = recordsByMember.get(rec.memberId) ?? [];
+      list.push(rec);
+      recordsByMember.set(rec.memberId, list);
+    }
+
+    const memberItems = platformActivities.map((act) => {
+      const member = membersById.get(act.memberId);
+      const profile = profilesByMember.get(act.memberId);
+      const memberRecords = recordsByMember.get(act.memberId) ?? [];
+      const recordByCp = new Map(
+        memberRecords.map((r) => [r.attendanceCheckpointId, r]),
+      );
+
+      return {
+        memberId: act.memberId,
+        name: member?.name ?? '',
+        profile: this.toMemberProfileDto(
+          profile,
+          scoresByMember.get(act.memberId) ?? 0,
+        ),
+        activityCard: {
+          generationNumber: generation.number,
+          platform: act.platform,
+          role: act.role,
+          // ACTIVE 활동만 조회했으므로 항상 ACTIVE.
+          // TODO(seminar): DROPPED 멤버도 화면에 노출해야 한다면 별도 분기 필요.
+          status: 'ACTIVE' as const,
+        },
+        records: checkpoints.map((cp) => {
+          const rec = recordByCp.get(cp.id);
+          return {
+            checkpointId: cp.id,
+            label: cp.title,
+            status: rec?.status ?? ('PENDING' as const),
+            checkedAt: rec?.checkedAt?.toISOString() ?? null,
+          };
+        }),
+      };
+    });
+
+    return {
+      seminarId: schedule.id,
+      platform,
+      label: PLATFORM_LABEL[platform],
+      memberCount: platformActivities.length,
+      checkpoints: checkpoints.map((cp) => ({
+        checkpointId: cp.id,
+        label: cp.title,
+        order: cp.roundNo,
+      })),
+      members: memberItems,
     };
   }
 

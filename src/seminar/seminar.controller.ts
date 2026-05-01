@@ -28,4 +28,15 @@ export class SeminarController {
   getAttendancePlatforms(@Param('seminarId', ParseIntPipe) seminarId: number) {
     return this.seminarService.getAttendancePlatforms(seminarId);
   }
+
+  @Get(':seminarId/attendance/platforms/:platformId')
+  getAttendancePlatformMembers(
+    @Param('seminarId', ParseIntPipe) seminarId: number,
+    @Param('platformId') platformId: string,
+  ) {
+    return this.seminarService.getAttendancePlatformMembers(
+      seminarId,
+      platformId,
+    );
+  }
 }
