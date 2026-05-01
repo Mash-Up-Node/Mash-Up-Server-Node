@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { sql } from 'drizzle-orm';
 import { createDb, createPool } from '../client';
 import { seedAttendance } from './seed.attendance';
+import { seedDanggn } from './seed.danggn';
 import { seedGenerations } from './seed.generations';
 import { seedMashong } from './seed.mashong';
 import { seedMembers } from './seed.members';
@@ -33,6 +34,10 @@ async function run(): Promise<void> {
         mashong_attendance,
         mashong,
         mashong_level,
+        carrot_round_rankings,
+        carrot_shake_events,
+        carrot_staked_count,
+        carrot_rounds,
         member_generation_activities,
         member_profiles,
         members,
@@ -45,6 +50,7 @@ async function run(): Promise<void> {
     const { pastCheckpointIds } = await seedSeminars(tx, { generationId });
     await seedAttendance(tx, { viewerId, memberIds, pastCheckpointIds });
     await seedMashong(tx, { generationId, viewerId });
+    await seedDanggn(tx, { generationId, viewerId, memberIds });
   });
 
   // eslint-disable-next-line no-console
