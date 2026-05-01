@@ -130,10 +130,10 @@ export class AuthController {
       const ttl = Number(process.env.REFRESH_TOKEN_TTL_SECONDS ?? 1209600);
       res.cookie('refresh_token', result.refreshToken, {
         httpOnly: true,
-        secure: true,
-        sameSite: 'strict',
+        secure: false,
+        sameSite: 'lax',
         maxAge: ttl * 1000,
-        path: '/auth',
+        path: '/',
       });
       return {
         memberId: result.memberId,
