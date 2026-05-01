@@ -1,4 +1,4 @@
-import { Controller, HttpCode, Post } from '@nestjs/common';
+import { Controller, HttpCode, Post, Get, Param } from '@nestjs/common';
 import { MashongService } from './mashong.service';
 
 @Controller('mashong')
@@ -12,5 +12,12 @@ export class MashongController {
     // const memberId = req.member.id;
     const memberId = 1; // 임시 테스트용, 가드 들어오고 삭제 예정
     return this.mashongService.checkAttendance(memberId);
+  }
+
+  @HttpCode(200)
+  @Get(':platform')
+  async getMashongInfo(@Param('platform') platform: string) {
+    const generationId = 1; // 임시 테스트용, 가드 들어오고 삭제 예정
+    return this.mashongService.getMashongInfo(platform, generationId);
   }
 }

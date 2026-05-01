@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { CheckAttendanceResponseDto } from './dto/check-attendance.response';
 import { MashongRepository } from './mashong.repository';
+import { MashongException } from './mashong.exception';
+import { GetMashongInfoResponseDto } from './dto/get-mashong-info.response';
 
 const ATTENDANCE_INTERVAL_MS = 30 * 60 * 1000;
 
@@ -48,6 +50,29 @@ export class MashongService {
       memberId,
       isChecked: true,
       attendanceSeq: nextSeq,
+    };
+  }
+
+  async getMashongInfo(
+    platform: string,
+    generationId: number,
+  ): Promise<GetMashongInfoResponseDto> {
+    const mashongInfo = await this.mashongRepository.getMashongInfo(
+      platform,
+      generationId,
+    );
+
+    if (!mashongInfo) {
+      throw MashongException.mashongNotFound();
+    }
+
+    return {
+      id: mashongInfo.id,
+      platform: platform,
+      level: mashongInfo.level,
+      accumulatedPopcorn: mashongInfo.accumulatedPopcorn,
+      lastPopcorn: mashongInfo.lastPopcorn,
+      goalPopcorn: mashongInfo.goalPopcorn,
     };
   }
 }
