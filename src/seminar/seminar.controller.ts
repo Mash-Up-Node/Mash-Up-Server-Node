@@ -11,7 +11,7 @@ export class SeminarController {
   // 'weekly' 라우트는 ':seminarId'보다 먼저 정의되어야 매칭 충돌이 없음
   @Get('weekly')
   getThisWeek() {
-    return this.seminarService.getThisWeek();
+    return this.seminarService.getThisWeek(STUB_VIEWER_ID);
   }
 
   @Get()
