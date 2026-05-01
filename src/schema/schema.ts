@@ -63,24 +63,33 @@ export const birthdayImageTypeEnum = pgEnum('birthday_image_type_enum', [
   'CUSTOM',
 ]);
 
-export const members = pgTable('members', {
-  id: bigserial('id', { mode: 'number' }).primaryKey(),
-  oauthProvider: oauthProviderEnum('oauth_provider').notNull(),
-  oauthProviderUserId: varchar('oauth_provider_user_id', {
-    length: 255,
-  }).notNull(),
-  email: varchar('email', { length: 320 }),
-  name: varchar('name', { length: 100 }),
-  signupCompleted: boolean('signup_completed').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow()
-    .$onUpdate(() => new Date()),
-  deletedAt: timestamp('deleted_at', { withTimezone: true }),
-});
+export const members = pgTable(
+  'members',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    oauthProvider: oauthProviderEnum('oauth_provider').notNull(),
+    oauthProviderUserId: varchar('oauth_provider_user_id', {
+      length: 255,
+    }).notNull(),
+    email: varchar('email', { length: 320 }),
+    name: varchar('name', { length: 100 }),
+    signupCompleted: boolean('signup_completed').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [
+    // 탈퇴 회원(soft-delete)은 제외하여 동일 네이버 계정으로 재가입을 허용한다.
+    uniqueIndex('members_oauth_identity_uq')
+      .on(table.oauthProvider, table.oauthProviderUserId)
+      .where(sql`${table.deletedAt} IS NULL`),
+  ],
+);
 
 export const memberProfiles = pgTable('member_profiles', {
   memberId: bigint('member_id', { mode: 'number' })
@@ -203,23 +212,6 @@ export const inviteCodeUsages = pgTable(
     index('invite_code_usages_invite_code_id_idx').on(table.inviteCodeId),
     uniqueIndex('invite_code_usages_member_id_uq').on(table.memberId),
   ],
-);
-
-export const refreshTokens = pgTable(
-  'refresh_tokens',
-  {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    memberId: bigint('member_id', { mode: 'number' })
-      .notNull()
-      .references(() => members.id, { onDelete: 'cascade' }),
-    tokenHash: varchar('token_hash', { length: 255 }).notNull(),
-    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-    revokedAt: timestamp('revoked_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [index('refresh_tokens_member_id_idx').on(table.memberId)],
 );
 
 export const carrotRounds = pgTable(
@@ -393,6 +385,73 @@ export const birthdayCards = pgTable(
   ],
 );
 
+export const mashongAttendance = pgTable(
+  'mashong_attendance',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    memberId: bigint('member_id', { mode: 'number' })
+      .notNull()
+      .references(() => members.id, { onDelete: 'cascade' }),
+    seq: integer('seq').notNull(),
+    attendanceDate: date('attendance_date', { mode: 'string' })
+      .notNull()
+      .default(sql`CURRENT_DATE`),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique('mashong_attendance_member_date_seq_uq').on(
+      table.memberId,
+      table.attendanceDate,
+      table.seq,
+    ),
+  ],
+);
+
+export const mashong = pgTable(
+  'mashong',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    generationId: bigint('generateion_id', { mode: 'number' })
+      .notNull()
+      .references(() => generations.id, { onDelete: 'cascade' }),
+    platform: platformEnum('platform').notNull(),
+    level: bigint('level', { mode: 'number' }).notNull().default(1),
+    accumulatedPopcorn: bigint('accumulated_popcorn', { mode: 'number' })
+      .notNull()
+      .default(0),
+    lastPopcorn: bigint('last_popcorn', { mode: 'number' })
+      .notNull()
+      .default(0),
+    goalPopcorn: bigint('goal_popcorn', { mode: 'number' })
+      .notNull()
+      .default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    unique('mashong_generation_platform_uq').on(
+      table.generationId,
+      table.platform,
+    ),
+  ],
+);
+
+export const mashongLevel = pgTable(
+  'mashong_level',
+  {
+    level: bigint('level', { mode: 'number' }).notNull(),
+    goalPopcorn: bigint('goal_popcorn', { mode: 'number' }).notNull(),
+  },
+  (table) => [unique('mashong_level_uq').on(table.level)],
+);
+
 export const membersRelations = relations(members, ({ one, many }) => ({
   profile: one(memberProfiles, {
     fields: [members.id],
@@ -401,7 +460,6 @@ export const membersRelations = relations(members, ({ one, many }) => ({
   generationActivities: many(memberGenerationActivities),
   createdInviteCodes: many(inviteCodes),
   inviteCodeUsages: many(inviteCodeUsages),
-  refreshTokens: many(refreshTokens),
   carrotRoundRankings: many(carrotRoundRankings),
   carrotShakeEvents: many(carrotShakeEvents),
   sentBirthdayCards: many(birthdayCards, { relationName: 'birthday_sender' }),
@@ -409,6 +467,7 @@ export const membersRelations = relations(members, ({ one, many }) => ({
     relationName: 'birthday_receiver',
   }),
   uploadedImages: many(images),
+  mashongAttendance: many(mashongAttendance),
 }));
 
 export const memberProfilesRelations = relations(memberProfiles, ({ one }) => ({
@@ -424,6 +483,7 @@ export const generationsRelations = relations(generations, ({ many }) => ({
   carrotRounds: many(carrotRounds),
   birthdayCards: many(birthdayCards),
   carrotStakedCounts: many(carrotStakedCount),
+  mashong: many(mashong),
 }));
 
 export const memberGenerationActivitiesRelations = relations(
@@ -465,13 +525,6 @@ export const inviteCodeUsagesRelations = relations(
     }),
   }),
 );
-
-export const refreshTokensRelations = relations(refreshTokens, ({ one }) => ({
-  member: one(members, {
-    fields: [refreshTokens.memberId],
-    references: [members.id],
-  }),
-}));
 
 export const carrotRoundsRelations = relations(
   carrotRounds,

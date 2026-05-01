@@ -12,8 +12,15 @@
     {
       "idx": 1,
       "version": "7",
-      "when": 1777487696064,
-      "tag": "0001_seminar_schedules_nullable",
+      "when": 1777477273684,
+      "tag": "0001_stiff_wolfsbane",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777644735476,
+      "tag": "0002_mushy_mulholland_black",
       "breakpoints": true
     }
   ]
