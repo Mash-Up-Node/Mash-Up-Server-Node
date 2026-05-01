@@ -3,10 +3,8 @@ import {
   bigint,
   bigserial,
   boolean,
-  check,
   date,
   integer,
-  numeric,
   pgEnum,
   pgTable,
   text,
@@ -207,141 +205,48 @@ export const inviteCodeUsages = pgTable(
   ],
 );
 
-export const seminarSchedules = pgTable(
-  'seminar_schedules',
+export const mashongAttendance = pgTable(
+  'mashong_attendance',
   {
     id: bigserial('id', { mode: 'number' }).primaryKey(),
-    generationId: bigint('generation_id', { mode: 'number' })
-      .notNull()
-      .references(() => generations.id, { onDelete: 'cascade' }),
-    title: varchar('title', { length: 255 }).notNull(),
-    description: text('description').notNull(),
-    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
-    endedAt: timestamp('ended_at', { withTimezone: true }).notNull(),
-    venueName: varchar('venue_name', { length: 255 }).notNull(),
-    venueAddress: varchar('venue_address', { length: 500 }),
-    venueLat: numeric('venue_lat', { precision: 9, scale: 6 }),
-    venueLng: numeric('venue_lng', { precision: 9, scale: 6 }),
-    notice: text('notice').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => [
-    index('seminar_schedules_generation_id_idx').on(table.generationId),
-  ],
-);
-
-export const seminarSections = pgTable(
-  'seminar_sections',
-  {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    seminarScheduleId: bigint('seminar_schedule_id', { mode: 'number' })
-      .notNull()
-      .references(() => seminarSchedules.id, { onDelete: 'cascade' }),
-    title: varchar('title', { length: 255 }).notNull(),
-    description: text('description'),
-    startedAt: timestamp('started_at', { withTimezone: true }),
-    endedAt: timestamp('ended_at', { withTimezone: true }),
-    sortOrder: integer('sort_order').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => [
-    unique('seminar_sections_schedule_sort_order_uq').on(
-      table.seminarScheduleId,
-      table.sortOrder,
-    ),
-    check('seminar_sections_sort_order_gte_1_ck', sql`${table.sortOrder} >= 1`),
-  ],
-);
-
-export const seminarItems = pgTable(
-  'seminar_items',
-  {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    seminarSectionId: bigint('seminar_section_id', { mode: 'number' })
-      .notNull()
-      .references(() => seminarSections.id, { onDelete: 'cascade' }),
-    title: varchar('title', { length: 255 }).notNull(),
-    description: text('description'),
-    startedAt: timestamp('started_at', { withTimezone: true }),
-    endedAt: timestamp('ended_at', { withTimezone: true }),
-    sortOrder: integer('sort_order').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => [
-    unique('seminar_items_section_sort_order_uq').on(
-      table.seminarSectionId,
-      table.sortOrder,
-    ),
-    check('seminar_items_sort_order_gte_1_ck', sql`${table.sortOrder} >= 1`),
-  ],
-);
-
-export const attendanceCheckpoints = pgTable(
-  'attendance_checkpoints',
-  {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    seminarScheduleId: bigint('seminar_schedule_id', { mode: 'number' })
-      .notNull()
-      .references(() => seminarSchedules.id, { onDelete: 'cascade' }),
-    roundNo: integer('round_no').notNull(),
-    title: varchar('title', { length: 255 }).notNull(),
-    openedAt: timestamp('opened_at', { withTimezone: true }).notNull(),
-    lateAt: timestamp('late_at', { withTimezone: true }).notNull(),
-    closedAt: timestamp('closed_at', { withTimezone: true }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => [
-    unique('attendance_checkpoints_schedule_round_uq').on(
-      table.seminarScheduleId,
-      table.roundNo,
-    ),
-    check(
-      'attendance_checkpoints_round_no_gte_1_ck',
-      sql`${table.roundNo} >= 1`,
-    ),
-  ],
-);
-
-export const seminarAttendanceRecords = pgTable(
-  'seminar_attendance_records',
-  {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    attendanceCheckpointId: bigint('attendance_checkpoint_id', {
-      mode: 'number',
-    })
-      .notNull()
-      .references(() => attendanceCheckpoints.id, { onDelete: 'cascade' }),
     memberId: bigint('member_id', { mode: 'number' })
       .notNull()
       .references(() => members.id, { onDelete: 'cascade' }),
-    scoreDelta: integer('score_delta').notNull(),
-    status: attendanceStatusEnum('status').notNull(),
-    checkedAt: timestamp('checked_at', { withTimezone: true }),
-    checkMethod: attendanceCheckMethodEnum('check_method'),
+    seq: integer('seq').notNull(),
+    attendanceDate: date('attendance_date', { mode: 'string' })
+      .notNull()
+      .default(sql`CURRENT_DATE`),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique('mashong_attendance_member_date_seq_uq').on(
+      table.memberId,
+      table.attendanceDate,
+      table.seq,
+    ),
+  ],
+);
+
+export const mashong = pgTable(
+  'mashong',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    generationId: bigint('generateion_id', { mode: 'number' })
+      .notNull()
+      .references(() => generations.id, { onDelete: 'cascade' }),
+    platform: platformEnum('platform').notNull(),
+    level: bigint('level', { mode: 'number' }).notNull().default(1),
+    accumulatedPopcorn: bigint('accumulated_popcorn', { mode: 'number' })
+      .notNull()
+      .default(0),
+    lastPopcorn: bigint('last_popcorn', { mode: 'number' })
+      .notNull()
+      .default(0),
+    goalPopcorn: bigint('goal_popcorn', { mode: 'number' })
+      .notNull()
+      .default(0),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -351,11 +256,20 @@ export const seminarAttendanceRecords = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    unique('seminar_attendance_records_checkpoint_member_uq').on(
-      table.attendanceCheckpointId,
-      table.memberId,
+    unique('mashong_generation_platform_uq').on(
+      table.generationId,
+      table.platform,
     ),
   ],
+);
+
+export const mashongLevel = pgTable(
+  'mashong_level',
+  {
+    level: bigint('level', { mode: 'number' }).notNull(),
+    goalPopcorn: bigint('goal_popcorn', { mode: 'number' }).notNull(),
+  },
+  (table) => [unique('mashong_level_uq').on(table.level)],
 );
 
 export const membersRelations = relations(members, ({ one, many }) => ({
@@ -366,7 +280,7 @@ export const membersRelations = relations(members, ({ one, many }) => ({
   generationActivities: many(memberGenerationActivities),
   createdInviteCodes: many(inviteCodes),
   inviteCodeUsages: many(inviteCodeUsages),
-  seminarAttendanceRecords: many(seminarAttendanceRecords),
+  mashongAttendance: many(mashongAttendance),
 }));
 
 export const memberProfilesRelations = relations(memberProfiles, ({ one }) => ({
@@ -379,7 +293,7 @@ export const memberProfilesRelations = relations(memberProfiles, ({ one }) => ({
 export const generationsRelations = relations(generations, ({ many }) => ({
   memberGenerationActivities: many(memberGenerationActivities),
   inviteCodes: many(inviteCodes),
-  seminarSchedules: many(seminarSchedules),
+  mashong: many(mashong),
 }));
 
 export const memberGenerationActivitiesRelations = relations(
@@ -417,61 +331,6 @@ export const inviteCodeUsagesRelations = relations(
     }),
     member: one(members, {
       fields: [inviteCodeUsages.memberId],
-      references: [members.id],
-    }),
-  }),
-);
-
-export const seminarSchedulesRelations = relations(
-  seminarSchedules,
-  ({ one, many }) => ({
-    generation: one(generations, {
-      fields: [seminarSchedules.generationId],
-      references: [generations.id],
-    }),
-    seminarSections: many(seminarSections),
-    attendanceCheckpoints: many(attendanceCheckpoints),
-  }),
-);
-
-export const seminarSectionsRelations = relations(
-  seminarSections,
-  ({ one, many }) => ({
-    seminarSchedule: one(seminarSchedules, {
-      fields: [seminarSections.seminarScheduleId],
-      references: [seminarSchedules.id],
-    }),
-    seminarItems: many(seminarItems),
-  }),
-);
-
-export const seminarItemsRelations = relations(seminarItems, ({ one }) => ({
-  seminarSection: one(seminarSections, {
-    fields: [seminarItems.seminarSectionId],
-    references: [seminarSections.id],
-  }),
-}));
-
-export const attendanceCheckpointsRelations = relations(
-  attendanceCheckpoints,
-  ({ one, many }) => ({
-    seminarSchedule: one(seminarSchedules, {
-      fields: [attendanceCheckpoints.seminarScheduleId],
-      references: [seminarSchedules.id],
-    }),
-    seminarAttendanceRecords: many(seminarAttendanceRecords),
-  }),
-);
-
-export const seminarAttendanceRecordsRelations = relations(
-  seminarAttendanceRecords,
-  ({ one }) => ({
-    attendanceCheckpoint: one(attendanceCheckpoints, {
-      fields: [seminarAttendanceRecords.attendanceCheckpointId],
-      references: [attendanceCheckpoints.id],
-    }),
-    member: one(members, {
-      fields: [seminarAttendanceRecords.memberId],
       references: [members.id],
     }),
   }),

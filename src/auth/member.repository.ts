@@ -25,7 +25,7 @@ export class MemberRepository {
         oauthProvider: providerName,
         oauthProviderUserId: providerUserId,
         email,
-        signupCompleted: false,
+        signupCompleted: true,
       })
       .onConflictDoNothing()
       .returning();
