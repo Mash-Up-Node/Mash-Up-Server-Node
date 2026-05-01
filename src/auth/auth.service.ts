@@ -57,19 +57,7 @@ export class AuthService {
       profile,
     );
 
-    const accessToken = this.accessTokenService.issue(
-      member.id,
-      member.signupCompleted,
-    );
-
-    if (!member.signupCompleted) {
-      return {
-        memberId: member.id,
-        signupCompleted: false,
-        accessToken,
-        requiredFields: [...REQUIRED_SIGNUP_FIELDS],
-      };
-    }
+    const accessToken = this.accessTokenService.issue(member.id, true);
 
     const refreshToken = await this.refreshTokenService.issue(member.id);
 
