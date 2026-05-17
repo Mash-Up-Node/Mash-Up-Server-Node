@@ -13,10 +13,14 @@ export class MashongRepository {
   ) {}
 
   async insertAttendance(memberId: number, seq: number) {
-    await this.db.insert(mashongAttendance).values({
-      memberId,
-      seq,
-    });
+    return this.db
+      .insert(mashongAttendance)
+      .values({
+        memberId,
+        seq,
+      })
+      .onConflictDoNothing()
+      .returning();
   }
 
   async getLatestAttendance(memberId: number) {

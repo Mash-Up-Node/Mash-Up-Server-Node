@@ -40,14 +40,19 @@ export class MashongService {
 
     const nextSeq = latestSeq + 1;
 
-    await this.mashongRepository.insertAttendance(memberId, nextSeq);
+    const insertResult = await this.mashongRepository.insertAttendance(
+      memberId,
+      nextSeq,
+    );
 
     // TODO: 미션 기록 반영 추가, insert와 트랜잭션 처리하도록 구현
 
+    const inserted = insertResult.length > 0;
+
     return {
       memberId,
-      isChecked: true,
-      attendanceSeq: nextSeq,
+      isChecked: inserted,
+      attendanceSeq: inserted ? nextSeq : latestSeq,
     };
   }
 }
