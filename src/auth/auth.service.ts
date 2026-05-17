@@ -49,9 +49,14 @@ export class AuthService {
 
   async loginWithNaver(
     authorizationCode: string,
+    state: string,
     authClient: AuthClient,
   ): Promise<NaverLoginResult> {
-    const profile = await this.naverOAuthService.getProfile(authorizationCode);
+    const profile = await this.naverOAuthService.getProfile(
+      authorizationCode,
+      state,
+      authClient,
+    );
     const member = await this.findOrCreateOAuthMember(
       this.naverOAuthService,
       profile,

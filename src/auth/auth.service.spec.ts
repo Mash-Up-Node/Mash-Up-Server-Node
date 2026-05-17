@@ -78,7 +78,7 @@ describe('AuthService', () => {
     const service = createService(memberFixture(), undefined);
 
     await expect(
-      service.loginWithNaver('authorization-code', 'WEB'),
+      service.loginWithNaver('authorization-code', 'oauth-state', 'WEB'),
     ).resolves.toEqual({
       memberId: 1,
       signupCompleted: false,
@@ -93,13 +93,18 @@ describe('AuthService', () => {
     expect(memberRepository.findActiveByOAuthIdentity).not.toHaveBeenCalled();
     expect(accessTokenService.issue).toHaveBeenCalledWith(1, false);
     expect(refreshTokenService.issue).not.toHaveBeenCalled();
+    expect(naverOAuthService.getProfile).toHaveBeenCalledWith(
+      'authorization-code',
+      'oauth-state',
+      'WEB',
+    );
   });
 
   it('기존 가입 미완료 사용자는 access token과 가입 필요 응답을 반환한다', async () => {
     const service = createService(undefined, memberFixture());
 
     await expect(
-      service.loginWithNaver('authorization-code', 'WEB'),
+      service.loginWithNaver('authorization-code', 'oauth-state', 'WEB'),
     ).resolves.toMatchObject({
       memberId: 1,
       signupCompleted: false,
@@ -119,7 +124,7 @@ describe('AuthService', () => {
     );
 
     await expect(
-      service.loginWithNaver('authorization-code', 'NATIVE'),
+      service.loginWithNaver('authorization-code', 'oauth-state', 'NATIVE'),
     ).resolves.toEqual({
       memberId: 1,
       signupCompleted: true,
@@ -129,13 +134,18 @@ describe('AuthService', () => {
     });
     expect(accessTokenService.issue).toHaveBeenCalledWith(1, true);
     expect(refreshTokenService.issue).toHaveBeenCalledWith(1);
+    expect(naverOAuthService.getProfile).toHaveBeenCalledWith(
+      'authorization-code',
+      'oauth-state',
+      'NATIVE',
+    );
   });
 
   it('unique 충돌 후 활성 회원을 찾지 못하면 충돌 예외를 던진다', async () => {
     const service = createService(undefined, undefined);
 
     await expect(
-      service.loginWithNaver('authorization-code', 'WEB'),
+      service.loginWithNaver('authorization-code', 'oauth-state', 'WEB'),
     ).rejects.toThrow(AuthConflictException);
   });
 });

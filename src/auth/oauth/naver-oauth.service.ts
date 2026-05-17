@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { AuthClient } from '../auth.types';
 import { NaverAuthFailedException } from '../auth.errors';
 import { OAuthProvider, OAuthUserProfile } from './oauth-provider.interface';
 
@@ -26,21 +27,37 @@ export class NaverOAuthService implements OAuthProvider {
   private readonly logger = new Logger(NaverOAuthService.name);
   private readonly clientId: string;
   private readonly clientSecret: string;
+  private readonly webRedirectUri: string;
+  private readonly nativeRedirectUri: string;
 
   constructor() {
     const clientId = process.env.NAVER_CLIENT_ID;
     const clientSecret = process.env.NAVER_CLIENT_SECRET;
+    const webRedirectUri = process.env.NAVER_WEB_REDIRECT_URI;
+    const nativeRedirectUri = process.env.NAVER_NATIVE_REDIRECT_URI;
 
-    if (!clientId || !clientSecret) {
-      throw new Error('NAVER_CLIENT_ID and NAVER_CLIENT_SECRET are required.');
+    if (!clientId || !clientSecret || !webRedirectUri) {
+      throw new Error(
+        'NAVER_CLIENT_ID, NAVER_CLIENT_SECRET and NAVER_WEB_REDIRECT_URI are required.',
+      );
     }
 
     this.clientId = clientId;
     this.clientSecret = clientSecret;
+    this.webRedirectUri = webRedirectUri;
+    this.nativeRedirectUri = nativeRedirectUri || webRedirectUri;
   }
 
-  async getProfile(authorizationCode: string): Promise<OAuthUserProfile> {
-    const naverAccessToken = await this.exchangeAccessToken(authorizationCode);
+  async getProfile(
+    authorizationCode: string,
+    state: string,
+    authClient: AuthClient,
+  ): Promise<OAuthUserProfile> {
+    const naverAccessToken = await this.exchangeAccessToken(
+      authorizationCode,
+      state,
+      authClient,
+    );
     const profile = await this.fetchProfile(naverAccessToken);
     const providerUserId = profile.response?.id;
 
@@ -57,12 +74,18 @@ export class NaverOAuthService implements OAuthProvider {
 
   private async exchangeAccessToken(
     authorizationCode: string,
+    state: string,
+    authClient: AuthClient,
   ): Promise<string> {
+    const redirectUri =
+      authClient === 'NATIVE' ? this.nativeRedirectUri : this.webRedirectUri;
     const params = new URLSearchParams({
       grant_type: 'authorization_code',
       client_id: this.clientId,
       client_secret: this.clientSecret,
+      redirect_uri: redirectUri,
       code: authorizationCode,
+      state,
     });
 
     const response = await this.fetchOrFail(

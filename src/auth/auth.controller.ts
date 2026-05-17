@@ -38,11 +38,15 @@ export class AuthController {
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['authorizationCode'],
+      required: ['authorizationCode', 'state'],
       properties: {
         authorizationCode: {
           type: 'string',
           example: 'naver-authorization-code',
+        },
+        state: {
+          type: 'string',
+          example: 'naver-oauth-state',
         },
         authClient: {
           type: 'string',
@@ -121,6 +125,7 @@ export class AuthController {
   ) {
     const result = await this.authService.loginWithNaver(
       body.authorizationCode,
+      body.state,
       body.authClient,
     );
 

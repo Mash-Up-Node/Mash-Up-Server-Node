@@ -56,9 +56,18 @@ Request body:
 ```json
 {
   "authorizationCode": "string",
+  "state": "string",
   "authClient": "WEB"
 }
 ```
+
+`state` must be the same value used when requesting the Naver authorization
+code. The server also requires `NAVER_WEB_REDIRECT_URI` to match the redirect
+URI registered in Naver Developers.
+`NATIVE` clients use `NAVER_NATIVE_REDIRECT_URI` for the token exchange when it
+is configured; otherwise they fall back to `NAVER_WEB_REDIRECT_URI`.
+The client that starts OAuth must validate the returned state before calling
+this endpoint.
 
 `authClient` is optional and defaults to `WEB`. Allowed values are `WEB` and
 `NATIVE`.

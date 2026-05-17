@@ -1,4 +1,5 @@
 import { oauthProviderEnum } from '../../schema';
+import { AuthClient } from '../auth.types';
 
 export type OAuthProviderName = (typeof oauthProviderEnum.enumValues)[number];
 
@@ -9,5 +10,9 @@ export interface OAuthUserProfile {
 
 export interface OAuthProvider {
   readonly providerName: OAuthProviderName;
-  getProfile(authorizationCode: string): Promise<OAuthUserProfile>;
+  getProfile(
+    authorizationCode: string,
+    state: string,
+    authClient: AuthClient,
+  ): Promise<OAuthUserProfile>;
 }
